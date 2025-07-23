@@ -6,6 +6,7 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import CourseSelection from "../components/CourseSelection";
 import UploadDropZone from "../components/UploadDropZone";
 import UploadedFiles from "../components/UploadedFiles";
+import GenerateMetadataButton from "../components/GenerateMetadataButton";
 
 export default function Home() {
   const { user } = useUser();
@@ -67,17 +68,23 @@ export default function Home() {
         </Unauthenticated>
 
         <Authenticated>
-          <div className="max-w-4xl mx-auto p-6">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">
-              PDF File Upload
-            </h2>
+          <div className="max-w-4xl mx-auto p-6 space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold mb-6 text-gray-800">
+                PDF File Upload
+              </h2>
 
-            <UploadDropZone
-              courseId={selectedCourseId}
-              onUploadComplete={handleUploadComplete}
-            />
+              <UploadDropZone
+                courseId={selectedCourseId}
+                onUploadComplete={handleUploadComplete}
+              />
 
-            <UploadedFiles courseId={selectedCourseId} />
+              <UploadedFiles courseId={selectedCourseId} />
+            </div>
+
+            <div className="border-t pt-8">
+              <GenerateMetadataButton courseId={selectedCourseId} />
+            </div>
           </div>
         </Authenticated>
       </main>

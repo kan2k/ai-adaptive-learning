@@ -49,7 +49,6 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
             name: file.name,
             type: file.type,
             size: file.size,
-            uploadedBy: user.id,
             courseId,
           });
 

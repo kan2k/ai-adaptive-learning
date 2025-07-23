@@ -1,23 +1,20 @@
 "use client";
 
 import { useMutation, useQuery } from "convex/react";
-import { useUser } from "@clerk/clerk-react";
 import { api } from "../../convex/_generated/api";
 
 export default function UploadedFiles({ courseId }) {
-  const { user } = useUser();
-  const deleteFile = useMutation(api.files.deleteFile);
+  const removeFile = useMutation(api.courses.removeFile);
 
-  const files = useQuery(
-    api.files.getFiles,
-    user?.id && courseId ? { userId: user.id, courseId } : "skip",
-  );
+  const files = useQuery(api.files.getFiles, courseId ? { courseId } : "skip");
 
-  const handleDelete = async (fileId) => {
+  const handleRemove = async (fileId) => {
+    if (!courseId) return;
+
     try {
-      await deleteFile({ fileId });
+      await removeFile({ courseId, fileId });
     } catch (error) {
-      console.error("Delete failed:", error);
+      console.error("Remove failed:", error);
     }
   };
 
@@ -76,6 +73,9 @@ export default function UploadedFiles({ courseId }) {
                     Upload Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Concepts
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -84,9 +84,9 @@ export default function UploadedFiles({ courseId }) {
                 {files.map((file) => (
                   <tr key={file._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
+                      <div className="flex items-start">
                         <svg
-                          className="w-5 h-5 text-red-500 mr-3"
+                          className="w-5 h-5 text-red-500 mr-3 mt-0.5"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
@@ -96,9 +96,29 @@ export default function UploadedFiles({ courseId }) {
                             clipRule="evenodd"
                           />
                         </svg>
-                        <span className="text-sm font-medium text-gray-900 truncate max-w-xs">
-                          {file.name}
-                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium text-gray-900 truncate">
+                            {file.name}
+                          </div>
+                          {file.metadata?.relatedArea && (
+                            <div className="mt-1">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                {file.metadata.relatedArea}
+                              </span>
+                            </div>
+                          )}
+                          {file.metadata?.author &&
+                            file.metadata.author !== "Unknown" && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                By: {file.metadata.author}
+                              </div>
+                            )}
+                          {file.metadata?.description && (
+                            <div className="text-xs text-gray-600 mt-1 line-clamp-2">
+                              {file.metadata.description}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -107,12 +127,31 @@ export default function UploadedFiles({ courseId }) {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(file.uploadedAt)}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {file.metadata?.concepts &&
+                      file.metadata.concepts.length > 0 ? (
+                        <div className="flex items-center">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            ✓ {file.metadata.concepts.length} concepts
+                          </span>
+                          {file.metadata.generatedAt && (
+                            <span className="ml-2 text-xs text-gray-400">
+                              {formatDate(file.metadata.generatedAt)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                          No concepts
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => handleDelete(file._id)}
+                        onClick={() => handleRemove(file._id)}
                         className="text-red-600 hover:text-red-900 transition-colors"
                       >
-                        Delete
+                        Remove
                       </button>
                     </td>
                   </tr>
