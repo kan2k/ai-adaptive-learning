@@ -1,6 +1,9 @@
 import { internalAction, query } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import { generateObject } from "ai";
+import { openrouter } from "./providers";
+import { z } from "zod";
 
 const getSystemPrompt = () => `<role>
 You are an expert educational content analyzer that extracts key learning concepts and metadata from PDF documents.
@@ -23,237 +26,126 @@ Your task is to identify file information and summarize the main concepts that s
 7. Make sure the reference is an exact quote or paraphrase from the source material
 </instructions>`;
 
-const conceptSchema = {
-  type: "object",
-  properties: {
-    fileName: {
-      type: "string",
-      description: "The name of the PDF file being analyzed",
-    },
-    fileMetadata: {
-      type: "object",
-      description: "Metadata about the file content",
-      properties: {
-        relatedArea: {
-          type: "string",
-          description:
-            "The subject area, field of study, or domain this file relates to (e.g., 'Computer Science', 'Biology', 'Business Management')",
-        },
-        author: {
-          type: "string",
-          description:
-            "Author name(s) or organization that created this content. Use 'Unknown' if not found.",
-        },
-        description: {
-          type: "string",
-          description:
-            "A direct, engaging description that immediately tells what the content is about. NEVER start with meta-phrases like: 'This document', 'This paper', 'This module', 'This guide', 'This study', 'This content provides', 'This resource covers', etc. Instead, start directly with the actual topic. For example, instead of 'This document provides an introduction to electrical components', write 'Fundamental electrical components including resistors, capacitors, and...'",
-        },
-      },
-      required: ["relatedArea", "author", "description"],
-    },
-    concepts: {
-      type: "array",
-      description: "Array of distinct concepts extracted from this file",
-      items: {
-        type: "object",
-        properties: {
-          title: {
-            type: "string",
-            description: "Clear, concise title of the concept",
-          },
-          reference: {
-            type: "string",
-            description: "Direct quote or reference from the source material",
-          },
-          summary: {
-            type: "string",
-            description:
-              "Comprehensive explanation of the concept for student learning",
-          },
-        },
-        required: ["title", "reference", "summary"],
-      },
-    },
-  },
-  required: ["fileName", "fileMetadata", "concepts"],
-};
-
-// Helper function to call OpenRouter API directly
-async function callOpenRouterAPI(messages, fileName) {
-  try {
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: messages,
-          temperature: 0.3,
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "concept_extraction",
-              schema: conceptSchema,
-            },
-          },
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `OpenRouter API error: ${response.status} - ${errorText}`,
-      );
-    }
-
-    const data = await response.json();
-
-    if (!data.choices || data.choices.length === 0) {
-      throw new Error("No response from OpenRouter API");
-    }
-
-    const content = data.choices[0].message.content;
-    const annotations = data.choices[0].message.annotations;
-
-    // Parse the JSON response
-    const parsedContent = JSON.parse(content);
-
-    return {
-      concepts: parsedContent,
-      annotations: annotations,
-    };
-  } catch (error) {
-    console.error(`Error calling OpenRouter API for ${fileName}:`, error);
-    throw error;
-  }
-}
+const conceptSchema = z.object({
+  fileName: z.string().describe("The name of the PDF file being analyzed"),
+  fileMetadata: z
+    .object({
+      relatedArea: z
+        .string()
+        .describe(
+          "The subject area, field of study, or domain this file relates to (e.g., 'Computer Science', 'Biology', 'Business Management')",
+        ),
+      author: z
+        .string()
+        .describe(
+          "Author name(s) or organization that created this content. Use 'Unknown' if not found.",
+        ),
+      description: z
+        .string()
+        .describe(
+          "A direct, engaging description that immediately tells what the content is about. NEVER start with meta-phrases like: 'This document', 'This paper', 'This module', 'This guide', 'This study', 'This content provides', 'This resource covers', etc. Instead, start directly with the actual topic. For example, instead of 'This document provides an introduction to electrical components', write 'Fundamental electrical components including resistors, capacitors, and...'",
+        ),
+    })
+    .describe("Metadata about the file content"),
+  concepts: z
+    .array(
+      z.object({
+        title: z.string().describe("Clear, concise title of the concept"),
+        reference: z
+          .string()
+          .describe("Direct quote or reference from the source material"),
+        summary: z
+          .string()
+          .describe(
+            "Comprehensive explanation of the concept for student learning",
+          ),
+      }),
+    )
+    .describe("Array of distinct concepts extracted from this file"),
+});
 
 export const generateMetadata = internalAction({
   args: {
-    courseId: v.id("courses"),
+    fileId: v.id("files"),
   },
+  handler: async (ctx, { fileId }) => {
+    try {
+      await ctx.runMutation("files:saveMetadata", {
+        fileId: fileId,
+        metadata: {
+          relatedArea: "",
+          author: "",
+          description: `Reading file...`,
+          concepts: [],
+          generatedAt: Date.now(),
+          status: "processing",
+        },
+      });
 
-  handler: async (ctx, args) => {
-    console.log(`Starting learning generation for course: ${args.courseId}`);
+      const fileUrl = await ctx.runQuery("files:getFileUrl", {
+        fileId: fileId,
+      });
 
-    // Get the course and its files using the helper query from courses.js
-    const courseData = await ctx.runQuery("courses:getCourseWithFiles", {
-      courseId: args.courseId,
-    });
-
-    if (!courseData) {
-      throw new Error("Course not found");
-    }
-
-    if (!courseData.files || courseData.files.length === 0) {
-      throw new Error("No files found in this course");
-    }
-
-    console.log(
-      `Found ${courseData.files.length} files in course: ${courseData.name}`,
-    );
-
-    const allConcepts = [];
-
-    // Filter out files that already have generated concepts
-    const filesToProcess = courseData.files.filter((file) => {
-      const hasGeneratedConcepts = Boolean(
-        file.metadata?.concepts && file.metadata.concepts.length > 0,
+      const pdfResult = await ctx.runAction(
+        internal.utils.pdf.encodePDFToBase64,
+        { fileUrl: fileUrl },
       );
-      if (hasGeneratedConcepts) {
-        console.log(`Skipping ${file.name} - already has generated concepts`);
-        return false;
-      }
-      return true;
-    });
 
-    if (filesToProcess.length === 0) {
-      console.log("All files in this course already have generated concepts");
-      return {
-        courseId: args.courseId,
-        courseName: courseData.name,
-        totalFilesProcessed: 0,
-        concepts: [],
-        message: "All files already have generated concepts",
-      };
-    }
-
-    console.log(
-      `Found ${filesToProcess.length} files to process (${courseData.files.length - filesToProcess.length} already have concepts)`,
-    );
-
-    // Process each file individually
-    for (const file of filesToProcess) {
-      try {
-        console.log(`Processing file: ${file.name}`);
-
-        // Get the file URL from Convex storage using helper query from files.js
-        const fileUrl = await ctx.runQuery("files:getFileUrl", {
-          storageId: file.storageId,
-        });
-
-        if (!fileUrl) {
-          console.warn(`Could not get URL for file ${file.name}, skipping...`);
-          continue;
-        }
-
-        // Convert PDF to base64 using Node.js environment
-        const pdfResult = await ctx.runAction(
-          internal.llm.pdfProcessor.processPDFFile,
-          {
-            fileUrl: fileUrl,
-            fileName: file.name,
-            systemPrompt: getSystemPrompt(),
+      // Call OpenRouter API with the base64 PDF
+      const { object } = await generateObject({
+        model: openrouter.chat("google/gemini-2.5-flash", {
+          extraBody: {
+            temperature: 0.1,
           },
-        );
+        }),
+        system: getSystemPrompt(),
+        schema: conceptSchema,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Please analyze this PDF document and extract the key learning concepts. Return the response in the specified JSON format.`,
+              },
+              {
+                type: "file",
+                data: pdfResult.base64PDF,
+                mimeType: "application/pdf",
+              },
+            ],
+          },
+        ],
+      });
 
-        if (pdfResult.success) {
-          // Call OpenRouter API with the base64 PDF
-          const apiResult = await callOpenRouterAPI(
-            pdfResult.messages,
-            file.name,
-          );
+      console.log("object", object);
 
-          console.log(
-            `Successfully extracted ${apiResult.concepts.concepts.length} concepts from ${file.name}`,
-          );
+      const metadata = {
+        relatedArea: object.fileMetadata.relatedArea,
+        author: object.fileMetadata.author,
+        description: object.fileMetadata.description,
+        concepts: object.concepts,
+        generatedAt: Date.now(),
+        status: "success",
+      };
 
-          // Save concepts and metadata to the file in the database
-          await ctx.runMutation("files:saveConcepts", {
-            fileId: file._id,
-            concepts: apiResult.concepts.concepts,
-            fileMetadata: apiResult.concepts.fileMetadata,
-            annotations: apiResult.annotations,
-          });
-
-          console.log(`Saved concepts to database for ${file.name}`);
-          allConcepts.push(apiResult.concepts);
-        } else {
-          console.error(`Failed to process ${file.name}: ${pdfResult.error}`);
-          // Continue with other files even if one fails
-        }
-      } catch (error) {
-        console.error(`Error processing file ${file._id}:`, error);
-        // Continue with other files even if one fails
-      }
+      await ctx.runMutation("files:saveMetadata", {
+        fileId: fileId,
+        metadata,
+      });
+    } catch (error) {
+      console.error(`Error generating metadata for file ${fileId}:`, error);
+      await ctx.runMutation("files:saveMetadata", {
+        fileId: fileId,
+        metadata: {
+          relatedArea: "",
+          author: "",
+          description: `Failed to process file`,
+          concepts: [],
+          generatedAt: Date.now(),
+          status: "error",
+        },
+      });
     }
-
-    console.log(
-      `Learning generation completed. Total files processed: ${allConcepts.length}`,
-    );
-    console.log("Generated concepts:", JSON.stringify(allConcepts, null, 2));
-
-    return {
-      courseId: args.courseId,
-      courseName: courseData.name,
-      totalFilesProcessed: allConcepts.length,
-      concepts: allConcepts,
-    };
   },
 });

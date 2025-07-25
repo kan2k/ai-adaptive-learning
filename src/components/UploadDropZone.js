@@ -27,7 +27,7 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
           // Generate upload URL
           const uploadUrl = await generateUploadUrl();
 
-          setUploadProgress((prev) => ({ ...prev, [file.name]: 25 }));
+          setUploadProgress((prev) => ({ ...prev, [file.name]: 30 }));
 
           // Upload file to Convex storage
           const response = await fetch(uploadUrl, {
@@ -113,16 +113,16 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
       {/* Dropzone */}
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+        className={`border-2 border-dashed rounded-lg px-8 py-4 text-center cursor-pointer transition-colors ${
           isDragActive
-            ? "border-blue-400 bg-blue-50"
-            : "border-gray-300 hover:border-gray-400"
+            ? "border-orange-400 bg-orange-50"
+            : "border-orange-500 hover:border-orange-400"
         }`}
       >
         <input {...getInputProps()} />
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center gap-2">
           <svg
-            className="w-12 h-12 text-gray-400 mb-4"
+            className="w-8 h-8 text-orange-500"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -135,14 +135,13 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
             />
           </svg>
           {isDragActive ? (
-            <p className="text-blue-600">Drop the PDF files here...</p>
+            <p className="text-orange-500 font-medium text-base">
+              Drop the PDF files here...
+            </p>
           ) : (
             <div>
-              <p className="text-gray-600 mb-2">
-                Drag & drop PDF files here, or click to select files
-              </p>
-              <p className="text-sm text-gray-500">
-                Only PDF files are accepted
+              <p className="text-orange-500 font-medium text-base">
+                Drop materials here...
               </p>
             </div>
           )}

@@ -26,56 +26,44 @@ export const saveFile = mutation({
       uploadedAt: Date.now(),
     });
 
-    // Add the file to the course
+    // Add the file to the course and auto-select it
     const course = await ctx.db.get(args.courseId);
     if (course) {
       await ctx.db.patch(args.courseId, {
         fileIds: [...(course.fileIds || []), fileId],
+        selectedFileIds: [...(course.selectedFileIds || []), fileId],
       });
     }
+
+    // Schedule metadata generation without awaiting it
+    ctx.scheduler.runAfter(0, internal.llm.generateMetadata.generateMetadata, {
+      fileId: fileId,
+    });
 
     return fileId;
   },
 });
 
-export const generateMetadata = action({
-  args: {
-    courseId: v.id("courses"),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.runAction(internal.llm.generateMetadata.generateMetadata, {
-      courseId: args.courseId,
-    });
-  },
-});
-
-export const saveConcepts = mutation({
+export const saveMetadata = mutation({
   args: {
     fileId: v.id("files"),
-    concepts: v.array(
-      v.object({
-        title: v.string(),
-        reference: v.string(),
-        summary: v.string(),
-      }),
-    ),
-    fileMetadata: v.object({
+    metadata: v.object({
       relatedArea: v.string(),
       author: v.string(),
       description: v.string(),
+      concepts: v.array(
+        v.object({
+          title: v.string(),
+          reference: v.string(),
+          summary: v.string(),
+        }),
+      ),
+      generatedAt: v.number(),
+      status: v.string(),
     }),
-    annotations: v.optional(v.any()),
   },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.fileId, {
-      metadata: {
-        ...args.fileMetadata,
-        concepts: args.concepts,
-        generatedAt: Date.now(),
-        annotations: args.annotations,
-      },
-    });
-
+  handler: async (ctx, { fileId, metadata }) => {
+    await ctx.db.patch(fileId, { metadata });
     return { success: true };
   },
 });
@@ -105,42 +93,13 @@ export const getFiles = query({
   },
 });
 
-export const getFileConcepts = query({
+export const getFileUrl = query({
   args: {
     fileId: v.id("files"),
   },
   handler: async (ctx, args) => {
     const file = await ctx.db.get(args.fileId);
-    if (!file) {
-      return null;
-    }
-
-    return {
-      fileName: file.name,
-      concepts: file.metadata?.concepts || [],
-      generatedAt: file.metadata?.generatedAt,
-      hasGeneratedConcepts: Boolean(
-        file.metadata?.concepts && file.metadata.concepts.length > 0,
-      ),
-    };
+    if (!file) throw new Error("File not found");
+    return await ctx.storage.getUrl(file.storageId);
   },
 });
-
-export const getFileUrl = query({
-  args: {
-    storageId: v.id("_storage"),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.storage.getUrl(args.storageId);
-  },
-});
-
-// Note: Files are no longer deleted, only removed from courses
-// This function is kept for reference but not exported
-const deleteFileFromStorage = async (ctx, fileId) => {
-  const file = await ctx.db.get(fileId);
-  if (file) {
-    await ctx.storage.delete(file.storageId);
-    await ctx.db.delete(fileId);
-  }
-};

@@ -6,14 +6,48 @@ export default defineSchema({
     name: v.string(),
     createdBy: v.string(),
     createdAt: v.number(),
+    lastOpenedAt: v.optional(v.number()),
+    threadId: v.optional(v.string()),
     fileIds: v.array(v.id("files")),
+    selectedFileIds: v.optional(v.array(v.id("files"))),
+    learningData: v.optional(
+      v.object({
+        nextQuestion: v.optional(
+          v.object({
+            question: v.string(),
+            questionRephrased: v.string(),
+            answers: v.array(v.string()),
+            correctAnswer: v.string(),
+            hint: v.string(),
+            concept: v.string(),
+            difficulty: v.string(), // "easy" or "hard"
+            message: v.string(), // Tutor's message/feedback
+            createdAt: v.number(),
+          }),
+        ),
+        flashcards: v.optional(
+          v.array(
+            v.object({
+              conceptTitle: v.string(),
+              relatedArea: v.string(),
+              suggestionImage: v.string(), // Descriptive text for AI image generation
+              flashCardText: v.string(), // Question: Answer format
+              sourceFileId: v.optional(v.id("files")), // Original file this was generated from
+              createdAt: v.number(),
+              generationType: v.string(), // "pre-generated" or "struggle-based"
+            }),
+          ),
+        ),
+        studentProgressReport: v.optional(v.string()),
+      }),
+    ),
   }).index("by_user", ["createdBy"]),
 
   files: defineTable({
+    storageId: v.id("_storage"),
     name: v.string(),
     type: v.string(),
     size: v.number(),
-    storageId: v.id("_storage"),
     uploadedAt: v.number(),
     metadata: v.optional(
       v.object({
@@ -28,7 +62,7 @@ export default defineSchema({
           }),
         ),
         generatedAt: v.number(),
-        annotations: v.optional(v.any()),
+        status: v.string(), // "success", "error", "processing"
       }),
     ),
   }),
