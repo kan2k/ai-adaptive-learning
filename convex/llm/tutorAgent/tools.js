@@ -46,9 +46,18 @@ export const addFlashcards = createTool({
         flashCardText: flashcard.flashcardContent,
         generationType: "pre-generated",
       });
-      results.push(result);
+      results.push({
+        conceptTitle: flashcard.conceptTitle,
+        status: "added",
+        content: flashcard.flashcardContent,
+        createdAt: result.flashcard.createdAt,
+      });
     }
-    return results;
+    return {
+      success: true,
+      flashcardsAdded: results.length,
+      flashcards: results,
+    };
   },
 });
 
@@ -118,7 +127,7 @@ export const setNextQuestion = createTool({
       message,
     },
   ) => {
-    return await ctx.runMutation(api.courses.setNextQuestion, {
+    await ctx.runMutation(api.courses.setNextQuestion, {
       courseId,
       question,
       questionRephrased,
@@ -129,6 +138,14 @@ export const setNextQuestion = createTool({
       difficulty,
       message,
     });
+
+    return {
+      success: true,
+      question,
+      concept,
+      difficulty,
+      message: "Next question has been set successfully",
+    };
   },
 });
 

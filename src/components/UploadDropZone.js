@@ -152,7 +152,7 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
       {Object.keys(uploadProgress).length > 0 && (
         <div className="mt-4 space-y-2">
           {Object.entries(uploadProgress).map(([fileName, progress]) => (
-            <div key={fileName} className="bg-gray-100 rounded p-3">
+            <div key={fileName} className="p-3">
               <div className="flex justify-between text-sm mb-1">
                 <span className="truncate">{fileName}</span>
                 <span>{progress}%</span>

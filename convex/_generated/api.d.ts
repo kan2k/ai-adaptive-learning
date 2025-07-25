@@ -11,7 +11,6 @@
 import type * as courses from "../courses.js";
 import type * as files from "../files.js";
 import type * as flashcards from "../flashcards.js";
-import type * as llm_generateFlashcards from "../llm/generateFlashcards.js";
 import type * as llm_generateMetadata from "../llm/generateMetadata.js";
 import type * as llm_providers from "../llm/providers.js";
 import type * as llm_tutorAgent_agent from "../llm/tutorAgent/agent.js";
@@ -36,7 +35,6 @@ declare const fullApi: ApiFromModules<{
   courses: typeof courses;
   files: typeof files;
   flashcards: typeof flashcards;
-  "llm/generateFlashcards": typeof llm_generateFlashcards;
   "llm/generateMetadata": typeof llm_generateMetadata;
   "llm/providers": typeof llm_providers;
   "llm/tutorAgent/agent": typeof llm_tutorAgent_agent;

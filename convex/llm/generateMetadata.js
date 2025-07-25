@@ -75,7 +75,7 @@ export const generateMetadata = internalAction({
         metadata: {
           relatedArea: "",
           author: "",
-          description: `Reading file...`,
+          description: `Processing file content...`,
           concepts: [],
           generatedAt: Date.now(),
           status: "processing",

@@ -60,9 +60,9 @@ export default function UploadedFiles({ courseId }) {
 
   return (
     <div className="">
-      <h3 className="text-lg font-semibold mb-4">
+      {/* <h3 className="text-lg font-semibold mb-4">
         Course Material ({files?.length || 0})
-      </h3>
+      </h3> */}
 
       {files && files.length > 0 ? (
         <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -96,13 +96,13 @@ export default function UploadedFiles({ courseId }) {
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-medium text-gray-900 truncate flex flex-row gap-2">
+                            <div className="text-sm font-bold font-[Menco] text-gray-900 truncate flex flex-row gap-2">
                               {file.name}
-                              {file.metadata.relatedArea && (
+                              {/* {file.metadata?.relatedArea && (
                                 <span className="inline-flex items-center px-2 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                   {file.metadata.relatedArea}
                                 </span>
-                              )}
+                              )} */}
                               {/* {file.metadata.author != "Unknown" && (
                                 <span className="inline-flex items-center px-2  rounded text-xs font-medium bg-blue-100 text-blue-800">
                                   {file.metadata.author}
@@ -112,7 +112,7 @@ export default function UploadedFiles({ courseId }) {
                             {file.metadata ? (
                               <>
                                 {file.metadata.description && (
-                                  <div className="text-xs text-gray-600 mt-1 line-clamp-2 whitespace-pre-wrap leading-3">
+                                  <div className="text-xs text-gray-600 font-medium line-clamp-2 whitespace-pre-wrap leading-3">
                                     {file.metadata.description}
                                   </div>
                                 )}
@@ -124,13 +124,13 @@ export default function UploadedFiles({ courseId }) {
                         </div>
                       </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="pr-6 whitespace-nowrap">
                         <button
                           onClick={(e) => {
                             e.stopPropagation(); // Prevent row click when clicking delete
                             handleRemove(file._id);
                           }}
-                          className="text-red-600 hover:text-red-900 transition-colors flex items-center justify-center"
+                          className="text-red-600 hover:cursor-pointer hover:bg-red-100 rounded-full p-2 hover:text-red-900 transition-colors flex items-center justify-center"
                         >
                           <Trash className="w-4 h-4" />
                         </button>

@@ -31,6 +31,10 @@ import {
   Lightbulb,
   Check,
   X,
+  MoreVertical,
+  Share2,
+  RefreshCcw,
+  Trash,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -38,6 +42,8 @@ import UploadDropZone from "@/components/UploadDropZone";
 import UploadedFiles from "@/components/UploadedFiles";
 import { StripBackground } from "@/components/StripBackground";
 import { shadesOfPurple } from "@clerk/themes";
+import { Navbar } from "@/components/Navbar";
+import { Flashcard } from "@/components/Flashcard";
 
 export default function Page() {
   const { user } = useUser();
@@ -45,7 +51,6 @@ export default function Page() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState("");
   const [isStartingCourse, setIsStartingCourse] = useState(false);
-  const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0);
 
   // Local state for current question/answer flow
   const [currentQuestion, setCurrentQuestion] = useState("");
@@ -60,6 +65,8 @@ export default function Page() {
   const [showHint, setShowHint] = useState(false);
   const [isLoadingNextQuestion, setIsLoadingNextQuestion] = useState(false);
   const [currentMessage, setCurrentMessage] = useState("");
+  const [displayedMessage, setDisplayedMessage] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
 
   const nameInputRef = useRef(null);
 
@@ -88,8 +95,6 @@ export default function Page() {
     selectedCourse?._id ? { courseId: selectedCourse._id } : "skip",
   );
 
-  const updateLastOpened = useMutation(api.courses.updateLastOpened);
-  const createCourse = useMutation(api.courses.createCourse);
   const updateCourseName = useMutation(api.courses.updateCourseName);
   const startCourse = useAction(api.courses.startCourse);
   const answerQuestion = useAction(api.llm.tutorAgent.agent.answerQuestion);
@@ -99,7 +104,9 @@ export default function Page() {
     files && files.length > 0 && files.every((file) => file.metadata);
   const hasFiles = files && files.length > 0;
   const isReadyToStart = hasFiles && allFilesHaveMetadata;
-  const courseStarted = selectedCourse?.threadId || nextQuestionData;
+  const courseStarted = learningData?.nextQuestion && learningData?.flashcards;
+  console.log(learningData?.nextQuestion);
+  console.log(learningData?.flashcards);
 
   // Set the most recent course as default when courses load
   useEffect(() => {
@@ -113,11 +120,6 @@ export default function Page() {
       }
     }
   }, [courses, selectedCourse]);
-
-  // Reset flashcard index when course changes
-  useEffect(() => {
-    setCurrentFlashcardIndex(0);
-  }, [selectedCourse]);
 
   // Update local state when nextQuestionData changes (new question available)
   useEffect(() => {
@@ -164,41 +166,35 @@ export default function Page() {
     setCurrentCorrectAnswer("");
     setCurrentHint("");
     setCurrentMessage("");
+    setDisplayedMessage("");
+    setIsTyping(false);
   }, [selectedCourse]);
 
-  const handleCourseSelect = async (course) => {
-    setSelectedCourse(course);
-
-    // Update the last opened timestamp
-    if (user?.id) {
-      try {
-        await updateLastOpened({
-          courseId: course._id,
-          userId: user.id,
-        });
-      } catch (error) {
-        console.error("Failed to update last opened:", error);
-      }
-    }
-  };
-
-  const handleCreateCourse = async () => {
-    if (!user?.id) {
-      console.error("User not authenticated");
+  // Typing animation effect for currentMessage
+  useEffect(() => {
+    if (!currentMessage) {
+      setDisplayedMessage("");
+      setIsTyping(false);
       return;
     }
 
-    try {
-      const courseId = await createCourse({
-        createdBy: user.id,
-      });
+    // Start typing animation
+    setIsTyping(true);
+    setDisplayedMessage("");
 
-      // The course will be automatically selected when the courses query updates
-      console.log("Course created:", courseId);
-    } catch (error) {
-      console.error("Failed to create course:", error);
-    }
-  };
+    let currentIndex = 0;
+    const typingInterval = setInterval(() => {
+      if (currentIndex < currentMessage.length) {
+        setDisplayedMessage(currentMessage.slice(0, currentIndex + 1));
+        currentIndex++;
+      } else {
+        setIsTyping(false);
+        clearInterval(typingInterval);
+      }
+    }, 30); // Adjust speed by changing this value (lower = faster)
+
+    return () => clearInterval(typingInterval);
+  }, [currentMessage]);
 
   const handleStartCourse = async () => {
     if (!selectedCourse || !user?.id) {
@@ -363,24 +359,6 @@ export default function Page() {
     }
   }, [isEditingName]);
 
-  // Flashcard navigation functions
-  const nextFlashcard = () => {
-    if (flashcards.length > 0) {
-      setCurrentFlashcardIndex((prev) => (prev + 1) % flashcards.length);
-    }
-  };
-
-  const prevFlashcard = () => {
-    if (flashcards.length > 0) {
-      setCurrentFlashcardIndex((prev) =>
-        prev === 0 ? flashcards.length - 1 : prev - 1,
-      );
-    }
-  };
-
-  const currentFlashcard =
-    flashcards.length > 0 ? flashcards[currentFlashcardIndex] : null;
-
   // Helper function to get button style based on answer state
   const getAnswerButtonStyle = (answerIndex, baseColor) => {
     if (!isAnswerSubmitted) {
@@ -412,69 +390,13 @@ export default function Page() {
 
       <Authenticated>
         <div className="z-10 relative flex flex-col h-full w-full font-bold gap-4">
-          <div className="pt-[5px] bg-blue-500 border-blue-400 border-b-2 rounded-b-[48px] h-16 flex flex-row items-center text-2xl font-bold translate-y-[-5px] hover:translate-y-[0px] transition-all duration-200">
-            <div className="h-full w-full flex flex-row items-center justify-between px-8">
-              <div className="flex flex-row items-center gap-8">
-                <Book className="h-6 w-6 text-white" />
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="bg-white px-4 w-[180px] py-1 rounded-full flex items-center gap-2 hover:bg-gray-50 transition-colors justify-center">
-                    My Courses
-                    <ChevronDownIcon className="h-4 w-4" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="start"
-                    className="p-2"
-                    //   style={{ width: "580px" }}
-                  >
-                    <div className="grid grid-cols-3 gap-2">
-                      {/* Create New Course button - always first */}
-                      <DropdownMenuItem
-                        className="cursor-pointer p-2 rounded-md border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                        style={{ width: "180px", height: "80px" }}
-                        onClick={handleCreateCourse}
-                      >
-                        <div className="flex items-center justify-center w-full h-full gap-1">
-                          <PlusIcon className="h-4 w-4" />
-                          <span className="text-sm font-[Menco]">
-                            Create New
-                          </span>
-                        </div>
-                      </DropdownMenuItem>
-
-                      {/* Course items */}
-                      {courses &&
-                        courses.length > 0 &&
-                        courses.map((course) => (
-                          <DropdownMenuItem
-                            key={course._id}
-                            className="cursor-pointer p-2 rounded-md border hover:bg-gray-50 transition-colors"
-                            style={{ width: "180px", height: "80px" }}
-                            onClick={() => handleCourseSelect(course)}
-                          >
-                            <div className="font-[Menco] text-sm w-full h-full flex flex-col items-center justify-center">
-                              <span className="">{course.name}</span>
-
-                              {/* {course.lastOpenedAt && (
-                                <span className="text-xs text-blue-600">
-                                  {new Date(
-                                    course.lastOpenedAt,
-                                  ).toLocaleDateString()}
-                                </span>
-                              )} */}
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="flex flex-row rounded-full border-2 border-white">
-                <UserButton />
-              </div>
-            </div>
-          </div>
+          <Navbar
+            courses={courses}
+            selectedCourse={selectedCourse}
+            setSelectedCourse={setSelectedCourse}
+          />
           <div className="flex flex-row h-full gap-4 mx-4 mb-4">
-            <div className="basis-[38.2%] bg-orange-300 h-full rounded-l-[12px] rounded-r-[48px] p-8 text-xl">
+            <div className="w-[38.2%] bg-orange-300 h-full rounded-l-[12px] rounded-r-[48px] p-8 text-xl">
               {/* If no courses, show a message to create a course */}
               {courses && courses.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center">
@@ -490,26 +412,47 @@ export default function Page() {
               )}
               {selectedCourse && (
                 <div className="mb-4">
-                  {isEditingName ? (
-                    <input
-                      ref={nameInputRef}
-                      type="text"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onBlur={handleFinishEditing}
-                      onKeyDown={handleKeyPress}
-                      className="font-bold text-2xl bg-transparent border-none outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 rounded px-2 py-1 w-full"
-                    />
-                  ) : (
-                    <div
-                      className="font-bold text-2xl cursor-pointer hover:bg-white hover:bg-opacity-20 rounded px-2 py-1 transition-colors"
-                      onClick={handleStartEditing}
-                      title="Click to edit name"
-                    >
-                      {selectedCourse.name}
+                  <div className="flex flex-row gap-2 justify-between">
+                    {isEditingName ? (
+                      <input
+                        ref={nameInputRef}
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={handleFinishEditing}
+                        onKeyDown={handleKeyPress}
+                        className="font-bold text-2xl bg-transparent border-none outline-none focus:bg-white focus:ring-2 focus:ring-blue-400 rounded px-2 py-1 w-full"
+                      />
+                    ) : (
+                      <div
+                        className="font-bold text-2xl cursor-pointer hover:bg-white hover:bg-opacity-20 rounded px-2 py-1 transition-colors"
+                        onClick={handleStartEditing}
+                        title="Click to edit name"
+                      >
+                        {selectedCourse.name}
+                      </div>
+                    )}
+                    <div className="h-full pt-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="h-full flex items-center">
+                          <MoreVertical className="h-5 w-5" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="p-2 font-[Menco]">
+                          <DropdownMenuItem>
+                            <Share2 className="h-5 w-5" />
+                            Share
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <RefreshCcw /> Restart
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Trash /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  )}
-                  {selectedFiles && selectedFiles.length > 0 && (
+                  </div>
+                  {/* {selectedFiles && selectedFiles.length > 0 && (
                     <div className="text-sm bg-white bg-opacity-20 rounded px-2 py-1 mt-2">
                       <span className="font-medium">
                         Selected Files ({selectedFiles.length}):
@@ -521,7 +464,7 @@ export default function Page() {
                         </span>
                       ))}
                     </div>
-                  )}
+                  )} */}
                 </div>
               )}
 
@@ -551,7 +494,7 @@ export default function Page() {
               {isStartingCourse && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-20 rounded-l-[48px] rounded-r-[12px]">
                   <Spinner size="xl" className="text-white mb-4" />
-                  <div className="text-white text-xl font-bold">
+                  <div className="text-white text-xl font-bold text-shadow-black">
                     Preparing...
                   </div>
                 </div>
@@ -560,90 +503,28 @@ export default function Page() {
               {/* Ready to start overlay */}
               {!courseStarted && !isStartingCourse && (
                 <div className="absolute self-center z-10 flex flex-col gap-1 rounded-lg px-8 py-4">
-                  <div className="text-center drop-shadow-2xl">
+                  <div className="text-center  text-white text-xl text-shadow-black">
                     {!hasFiles
                       ? "Upload some files to get started"
                       : !allFilesHaveMetadata
                         ? "Processing files..."
-                        : "Ready to start?"}
+                        : "Are you ready to start?"}
                   </div>
                   <Button
                     variant="outline"
-                    className="bg-white text-black"
+                    className="bg-white text-black font-[Menco] font-bold"
                     disabled={!isReadyToStart}
                     onClick={handleStartCourse}
                   >
-                    {!hasFiles
-                      ? "Upload Files First"
-                      : !allFilesHaveMetadata
-                        ? "Please Wait..."
-                        : "Let's go!"}
+                    Let&apos;s GO!
                   </Button>
                 </div>
               )}
               <div
                 className={`${courseStarted ? "" : "blur-sm"} flex flex-col h-full w-full gap-4`}
               >
-                <div className="basis-[40%] bg-green-500 w-full rounded-l-[48px] rounded-r-[12px] p-8 text-xl">
-                  <div className="w-full h-full flex flex-col items-center justify-between">
-                    <div className="text-sm">Flash Cards</div>
-
-                    {/* Flashcard Content */}
-                    <div className="text-center flex-1 flex items-center justify-center px-4">
-                      {currentFlashcard ? (
-                        <div className="space-y-1 flex flex-col items-center justify-center">
-                          <div className="text-lg font-bold text-white">
-                            {currentFlashcard.conceptTitle}
-                          </div>
-                          <div className="text-base bg-white bg-opacity-20 rounded-lg px-4 py-2 max-w-[80%]">
-                            {currentFlashcard.flashCardText}
-                          </div>
-                          {/* <div className="text-xs text-green-100">
-                          {currentFlashcard.relatedArea}
-                        </div> */}
-                        </div>
-                      ) : flashcards.length === 0 ? (
-                        <div className="text-center">
-                          <div className="text-base">No flashcards yet</div>
-                          <div className="text-sm text-green-100">
-                            Start learning to generate flashcards!
-                          </div>
-                        </div>
-                      ) : (
-                        "Loading flashcards..."
-                      )}
-                    </div>
-
-                    {/* Navigation Controls */}
-                    <div className="flex flex-row gap-4 items-center">
-                      <Button
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={prevFlashcard}
-                        disabled={flashcards.length <= 1}
-                      >
-                        <ChevronLeft className="size-4" />
-                      </Button>
-
-                      {/* Flashcard counter */}
-                      {flashcards.length > 0 && (
-                        <span className="text-sm text-green-100">
-                          {currentFlashcardIndex + 1} / {flashcards.length}
-                        </span>
-                      )}
-
-                      <Button
-                        variant="ghost"
-                        className="h-8 w-8"
-                        onClick={nextFlashcard}
-                        disabled={flashcards.length <= 1}
-                      >
-                        <ChevronRight className="size-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                <div className="basis-[60%] bg-purple-500 border-purple-400 w-full rounded-l-[48px] rounded-r-[12px] p-8 text-xl">
+                <Flashcard flashcards={flashcards} />
+                <div className="basis-[70%] bg-purple-500 border-purple-400 w-full rounded-l-[48px] rounded-r-[12px] p-8 text-xl">
                   <div className="flex flex-col h-full gap-4">
                     <div className="flex flex-row gap-4">
                       <div className="h-16 min-w-16 aspect-square bg-black self-end">
@@ -653,9 +534,11 @@ export default function Page() {
                           alt=""
                         />
                       </div>
-                      <div className="bg-white rounded-t-[24px] rounded-br-[24px] p-4 relative">
-                        {currentMessage || "Getting ready to teach you..."}
-                      </div>
+                      {currentMessage && (
+                        <div className="bg-white rounded-t-[24px] rounded-br-[24px] px-4 py-3 leading-6 relative">
+                          {displayedMessage}
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col h-full justify-between">
                       <div className="h-full flex items-center justify-center text-white text-2xl text-center">
@@ -729,11 +612,13 @@ export default function Page() {
                                 disabled={
                                   isAnswerSubmitted || isSubmittingAnswer
                                 }
-                                className={`${getAnswerButtonStyle(index, colors[index])} rounded-2xl p-4 flex flex-row gap-2 text-white text-lg items-center justify-between cursor-pointer disabled:cursor-not-allowed`}
+                                className={`${getAnswerButtonStyle(index, colors[index])} rounded-2xl p-4 text-white text-lg  cursor-pointer disabled:cursor-not-allowed flex flex-row gap-2 items-center justify-between`}
                               >
                                 <div className="flex flex-row gap-2 items-center">
-                                  <Icon />
-                                  <span>{answer}</span>
+                                  <Icon className="min-h-6 min-w-6" />
+                                  <div className="text-left leading-5">
+                                    {answer}
+                                  </div>
                                 </div>
 
                                 {/* Show correct/incorrect icons after submission */}

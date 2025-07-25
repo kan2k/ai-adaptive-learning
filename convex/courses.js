@@ -346,6 +346,9 @@ export const setStudentProgress = mutation({
     courseId: v.id("courses"),
     progressReport: v.string(),
   },
+  returns: v.object({
+    success: v.boolean(),
+  }),
   handler: async (ctx, args) => {
     const course = await ctx.db.get(args.courseId);
     if (!course) {

@@ -19,6 +19,17 @@ export const addFlashcard = mutation({
     sourceFileId: v.optional(v.id("files")),
     generationType: v.string(), // "pre-generated" or "struggle-based"
   },
+  returns: v.object({
+    success: v.boolean(),
+    flashcard: v.object({
+      conceptTitle: v.string(),
+      relatedArea: v.string(),
+      suggestionImage: v.string(),
+      flashCardText: v.string(),
+      generationType: v.string(),
+      createdAt: v.number(),
+    }),
+  }),
   handler: async (ctx, args) => {
     const course = await ctx.db.get(args.courseId);
     if (!course) throw new Error("Course not found");
@@ -36,12 +47,17 @@ export const addFlashcard = mutation({
     const currentLearningData = course.learningData || {};
     const existingFlashcards = currentLearningData.flashcards || [];
 
-    return await ctx.db.patch(args.courseId, {
+    await ctx.db.patch(args.courseId, {
       learningData: {
         ...currentLearningData,
         flashcards: [...existingFlashcards, newFlashcard],
       },
     });
+
+    return {
+      success: true,
+      flashcard: newFlashcard,
+    };
   },
 });
 

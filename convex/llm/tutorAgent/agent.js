@@ -54,8 +54,13 @@ HARD questions should:
 - ALWAYS use the setNextQuestion tool to store the next question in the course database for the frontend to display.
 </question_and_answer_generation>
 
+<flashcard_and_student_progress_initialization>
+- When starting a new lesson (context type is start_lesson), use addFlashcards tool to add flashcards for all course concepts, at least 1 flashcard per concept, use more flashcards if concept is complex or lengthy
+- When starting a new lesson (context type is start_lesson), use setStudentProgress to create an initial progress template with placeholders for all course concepts
+</flashcard_and_student_progress_initialization>
+
 <flashcard_generation>
-- When starting a new lesson, use addFlashcards tool to add flashcards for all course concepts
+- When starting a new lesson, use addFlashcards tool to add flashcards for all course concepts, at least 1 flashcard per concept, use more flashcards if concept is complex or lengthy
 - generate flashcards when a concept has 2+ mistakes (check this from the progress report via getStudentProgress tool)
 - Use addFlashcards tool IMMEDIATELY when a concept reaches 2 mistakes
 - Check existing flashcards using getFlashcards tool to avoid duplicates
@@ -129,17 +134,6 @@ Start with EASY questions on [Concept 1]. Focus on basic understanding before pr
 </tool_use>
 `;
 
-export const testAgent = internalAction({
-  args: {},
-  handler: async (ctx) => {
-    const { text } = await generateText({
-      model: openrouter("google/gemini-2.5-flash"),
-      prompt: "Write a vegetarian lasagna recipe for 4 people.",
-    });
-    console.log(text);
-  },
-});
-
 const getTutorAgent = (courseId, materials) => {
   const tutorAgent = new Agent(components.agent, {
     // chat: openai("gpt-4o-mini"),
@@ -206,16 +200,14 @@ export const startCourse = internalAction({
       studentResponse: "",
     };
 
-    console.log(inputData);
-
     const result = await thread.generateText({
-      prompt: `Please analyze the student's learning context and use the setNextQuestion tool to set up the first question for this lesson. Then use the addFlashcards tool to add flashcards for all course concepts. ${JSON.stringify(inputData, null, 2)}`,
-      onStepFinish: async ({ text, toolCalls, toolResults, finishReason }) => {
-        console.log(finishReason, text, toolCalls, toolResults);
+      prompt: `${JSON.stringify(inputData, null, 2)}`,
+      onStepFinish: async (result) => {
+        console.log(result);
       },
     });
 
-    // console.log(result);
+    console.log("[Final Response]", result);
 
     await ctx.runMutation(api.courses.updateCourseThreadInfo, {
       courseId: courseId,
@@ -274,14 +266,20 @@ export const answerQuestion = action({
       studentResponse: answer,
     };
 
-    const result = await thread.generateText({
+    const { text } = await thread.generateText({
       prompt: `${JSON.stringify(inputData, null, 2)}`,
       onStepFinish: async ({ text, toolCalls, toolResults, finishReason }) => {
-        console.log(finishReason, text, toolCalls, toolResults);
+        console.log(
+          "[Step Finish]",
+          finishReason,
+          text,
+          toolCalls,
+          toolResults,
+        );
       },
     });
 
-    console.log(result);
+    console.log("[Final Response]", text);
 
     return {
       success: true,
