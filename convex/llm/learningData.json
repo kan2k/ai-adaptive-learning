@@ -1,0 +1,385 @@
+{
+  "flashcards": [
+    {
+      "conceptTitle": "Cycle Time (Period) and Frequency",
+      "createdAt": 1753597505637,
+      "flashCardText": "Cycle time (period) is the duration of one complete cycle of a signal. Frequency is how often cycles repeat per unit time, measured in Hertz (Hz). They are inversely related.",
+      "generationType": "pre-generated",
+      "relatedArea": "Cycle Time (Period) and Frequency",
+      "suggestionImage": "A waveform showing one complete cycle and its duration."
+    },
+    {
+      "conceptTitle": "Resistors in AC Circuits and Power Consumption",
+      "createdAt": 1753597505666,
+      "flashCardText": "In AC circuits, resistors have current and voltage waveforms that are \"in phase.\" Resistance (R) can be calculated using V/I (peak or RMS values). Resistors convert electrical energy into heat or work.",
+      "generationType": "pre-generated",
+      "relatedArea": "Resistors in AC Circuits and Power Consumption",
+      "suggestionImage": "A circuit diagram with a resistor connected to an AC source, showing in-phase voltage and current waveforms."
+    },
+    {
+      "conceptTitle": "Cycle Time (Period) and Frequency",
+      "createdAt": 1753600075352,
+      "flashCardText": "Cycle time (period) is the duration of one complete cycle of a signal. Frequency is how often cycles repeat per unit time, measured in Hertz (Hz). They are inversely related.",
+      "generationType": "pre-generated",
+      "relatedArea": "Cycle Time (Period) and Frequency",
+      "suggestionImage": "A waveform showing one complete cycle and its duration."
+    },
+    {
+      "conceptTitle": "Resistors in AC Circuits and Power Consumption",
+      "createdAt": 1753600075384,
+      "flashCardText": "In AC circuits, current and voltage are in phase for resistors. Resistance (R) = V/I (using peak or RMS values). Resistors convert electrical energy into heat.",
+      "generationType": "pre-generated",
+      "relatedArea": "Resistors in AC Circuits and Power Consumption",
+      "suggestionImage": "A circuit diagram with a resistor connected to an AC source, showing in-phase voltage and current waveforms."
+    },
+    {
+      "conceptTitle": "Factors Affecting Conductor Resistance",
+      "createdAt": 1753600075410,
+      "flashCardText": "Conductor resistance increases with length (L) and resistivity (ρ), and decreases with cross-sectional area (A). Temperature (T) also affects resistance, usually increasing it.",
+      "generationType": "pre-generated",
+      "relatedArea": "Factors Affecting Conductor Resistance",
+      "suggestionImage": "A diagram illustrating a conductor with its length, cross-sectional area, and material properties labeled."
+    },
+    {
+      "conceptTitle": "Skin Effect and Skin Depth",
+      "createdAt": 1753600075443,
+      "flashCardText": "Skin effect is when AC current flows near the surface of a conductor, more pronounced at higher frequencies. Skin depth (δ) is the depth where current density reduces to 37% of its surface value.",
+      "generationType": "pre-generated",
+      "relatedArea": "Skin Effect and Skin Depth",
+      "suggestionImage": "A cross-section of a conductor showing current concentrated near the surface."
+    },
+    {
+      "conceptTitle": "Proximity Effect",
+      "createdAt": 1753600075471,
+      "flashCardText": "Proximity effect occurs when multiple AC conductors are close, causing uneven current distribution and increased effective AC resistance due to interacting magnetic fields.",
+      "generationType": "pre-generated",
+      "relatedArea": "Proximity Effect",
+      "suggestionImage": "A diagram showing two parallel conductors with distorted current distribution due to proximity effect."
+    },
+    {
+      "conceptTitle": "Capacitor Fundamentals and Charge Storage",
+      "createdAt": 1753600075502,
+      "flashCardText": "A capacitor stores electrical energy using two conductive plates separated by a dielectric. Charge (q) is proportional to voltage (v), with capacitance (C) as the constant (q = Cv).",
+      "generationType": "pre-generated",
+      "relatedArea": "Capacitor Fundamentals and Charge Storage",
+      "suggestionImage": "A diagram of a capacitor with two plates and a dielectric material."
+    },
+    {
+      "conceptTitle": "Capacitive Reactance",
+      "createdAt": 1753600075529,
+      "flashCardText": "Capacitive reactance (Xc) opposes AC current flow in a capacitor, measured in ohms. It is inversely proportional to frequency; higher frequency means lower Xc.",
+      "generationType": "pre-generated",
+      "relatedArea": "Capacitive Reactance",
+      "suggestionImage": "A graph showing capacitive reactance decreasing as frequency increases."
+    },
+    {
+      "conceptTitle": "Inductors and Magnetic Flux Storage",
+      "createdAt": 1753600075557,
+      "flashCardText": "Inductors store energy in a magnetic field, typically coiled wire around a core. Magnetic flux (φ) is proportional to current (i), with inductance (L) as the constant (φ = Li).",
+      "generationType": "pre-generated",
+      "relatedArea": "Inductors and Magnetic Flux Storage",
+      "suggestionImage": "A diagram of an inductor coil with magnetic flux lines."
+    },
+    {
+      "conceptTitle": "Inductive Reactance",
+      "createdAt": 1753600075585,
+      "flashCardText": "Inductive reactance (XL) opposes AC current flow in an inductor, measured in ohms. It is directly proportional to frequency; higher frequency means higher XL.",
+      "generationType": "pre-generated",
+      "relatedArea": "Inductive Reactance",
+      "suggestionImage": "A graph showing inductive reactance increasing as frequency increases."
+    },
+    {
+      "conceptTitle": "Fundamentals of Electromagnetism and Magnetic Fields",
+      "createdAt": 1753600075611,
+      "flashCardText": "Magnetic fields are crucial for energy conversion, represented by flux lines. Key principles include current creating magnetic fields, changing magnetic fields inducing voltage, and current in a magnetic field experiencing force.",
+      "generationType": "pre-generated",
+      "relatedArea": "Fundamentals of Electromagnetism and Magnetic Fields",
+      "suggestionImage": "Illustrations of magnetic field lines around a magnet and a current-carrying wire."
+    },
+    {
+      "conceptTitle": "Historical Development and Core Laws of Electromagnetism",
+      "createdAt": 1753600075638,
+      "flashCardText": "Oersted discovered current creates magnetic fields. Ampère formalized this with Ampère's Law. Faraday discovered changing magnetic fields induce voltage with Faraday's Law. These are foundational.",
+      "generationType": "pre-generated",
+      "relatedArea": "Historical Development and Core Laws of Electromagnetism",
+      "suggestionImage": "Portraits of Oersted, Ampère, and Faraday."
+    },
+    {
+      "conceptTitle": "Ampere's Law and Magnetic Field Production",
+      "createdAt": 1753600075663,
+      "flashCardText": "Ampere's Law relates electric current to the magnetic field it produces. The line integral of magnetic field intensity around a closed loop is proportional to the enclosed current. The Right-Hand Rule determines field direction.",
+      "generationType": "pre-generated",
+      "relatedArea": "Ampere's Law and Magnetic Field Production",
+      "suggestionImage": "A diagram illustrating Ampere's Law with a current-carrying wire and a closed loop."
+    },
+    {
+      "conceptTitle": "Faraday's Law of Induction and Lenz's Law",
+      "createdAt": 1753600075688,
+      "flashCardText": "Faraday's Law states induced voltage is proportional to the number of turns and the rate of change of magnetic flux. Lenz's Law explains the negative sign, stating the induced voltage opposes the change in flux.",
+      "generationType": "pre-generated",
+      "relatedArea": "Faraday's Law of Induction and Lenz's Law",
+      "suggestionImage": "A diagram showing a coil and a changing magnetic field inducing a current."
+    },
+    {
+      "conceptTitle": "Magnetic Circuit Analysis and Analogies to Electric Circuits",
+      "createdAt": 1753600075714,
+      "flashCardText": "Magnetic circuits are analogous to electric circuits, using MMF (magnetomotive force) to drive magnetic flux (Φ) against reluctance (ℛ). MMF = NI. Reluctance depends on length, area, and permeability.",
+      "generationType": "pre-generated",
+      "relatedArea": "Magnetic Circuit Analysis and Analogies to Electric Circuits",
+      "suggestionImage": "A comparison table showing analogies between electric and magnetic circuit components."
+    },
+    {
+      "conceptTitle": "Cycle Time (Period) and Frequency",
+      "createdAt": 1753600297332,
+      "flashCardText": "Cycle time (period) is the duration of one complete cycle of a signal. Frequency is how often cycles repeat per unit time, measured in Hertz (Hz). They are inversely related: higher frequency means shorter cycle time.",
+      "generationType": "pre-generated",
+      "relatedArea": "Cycle Time (Period) and Frequency",
+      "suggestionImage": "A sine wave illustrating one complete cycle and its duration."
+    },
+    {
+      "conceptTitle": "Resistors in AC Circuits and Power Consumption",
+      "createdAt": 1753600297362,
+      "flashCardText": "In AC circuits, resistors have current and voltage waveforms that are \"in phase.\" Resistance (R) can be calculated using peak (Vm/Im) or RMS (Vrms/Irms) values. Resistors convert electrical energy into heat or work.",
+      "generationType": "pre-generated",
+      "relatedArea": "Resistors in AC Circuits and Power Consumption",
+      "suggestionImage": "A circuit diagram showing a resistor connected to an AC voltage source."
+    },
+    {
+      "conceptTitle": "Factors Affecting Conductor Resistance",
+      "createdAt": 1753600297393,
+      "flashCardText": "Conductor resistance increases with length (L) and resistivity (ρ), and decreases with cross-sectional area (A). Temperature (T) also affects resistance, typically increasing it as temperature rises.",
+      "generationType": "pre-generated",
+      "relatedArea": "Factors Affecting Conductor Resistance",
+      "suggestionImage": "A diagram of a conductor with labels for length, cross-sectional area, and material resistivity."
+    },
+    {
+      "conceptTitle": "Skin Effect and Skin Depth",
+      "createdAt": 1753600297424,
+      "flashCardText": "The skin effect causes AC to flow primarily near the surface of a conductor, especially at higher frequencies. Skin depth (δ) is the depth at which current density reduces to 37% of its surface value, influenced by frequency and material properties.",
+      "generationType": "pre-generated",
+      "relatedArea": "Skin Effect and Skin Depth",
+      "suggestionImage": "A cross-section of a wire showing current concentrated near the surface due to the skin effect."
+    },
+    {
+      "conceptTitle": "Proximity Effect",
+      "createdAt": 1753600297452,
+      "flashCardText": "The proximity effect occurs when multiple AC-carrying conductors are close, causing uneven current distribution due to interacting magnetic fields. This increases effective AC resistance and power loss.",
+      "generationType": "pre-generated",
+      "relatedArea": "Proximity Effect",
+      "suggestionImage": "Multiple parallel wires illustrating distorted current distribution due to the proximity effect."
+    },
+    {
+      "conceptTitle": "Capacitor Fundamentals and Charge Storage",
+      "createdAt": 1753600297482,
+      "flashCardText": "A capacitor stores electrical energy using two conductive plates separated by a dielectric. Stored charge (q) is proportional to voltage (v), with capacitance (C) as the constant of proportionality, measured in Farads (F).",
+      "generationType": "pre-generated",
+      "relatedArea": "Capacitor Fundamentals and Charge Storage",
+      "suggestionImage": "A diagram of a parallel plate capacitor with a dielectric material between the plates."
+    },
+    {
+      "conceptTitle": "Capacitive Reactance",
+      "createdAt": 1753600297513,
+      "flashCardText": "Capacitive reactance (Xc) is a capacitor's opposition to AC flow, measured in ohms. It is inversely proportional to frequency: higher frequency means lower Xc, allowing more current. At DC, a capacitor acts as an open circuit.",
+      "generationType": "pre-generated",
+      "relatedArea": "Capacitive Reactance",
+      "suggestionImage": "A graph showing capacitive reactance decreasing as frequency increases."
+    },
+    {
+      "conceptTitle": "Inductors and Magnetic Flux Storage",
+      "createdAt": 1753600297545,
+      "flashCardText": "Inductors are magnetic components, usually coiled wires, that store energy in a magnetic field. Magnetic flux (φ) is directly proportional to current (i), with inductance (L) as the constant of proportionality, measured in Henries (H).",
+      "generationType": "pre-generated",
+      "relatedArea": "Inductors and Magnetic Flux Storage",
+      "suggestionImage": "A diagram of an inductor coil with magnetic flux lines passing through it."
+    },
+    {
+      "conceptTitle": "Inductive Reactance",
+      "createdAt": 1753600297577,
+      "flashCardText": "Inductive reactance (XL) is an inductor's opposition to AC flow, measured in ohms. It is directly proportional to frequency: higher frequency means higher XL, impeding current. At high frequencies, it's an open circuit; at DC, a short circuit.",
+      "generationType": "pre-generated",
+      "relatedArea": "Inductive Reactance",
+      "suggestionImage": "A graph showing inductive reactance increasing as frequency increases."
+    },
+    {
+      "conceptTitle": "Fundamentals of Electromagnetism and Magnetic Fields",
+      "createdAt": 1753600297610,
+      "flashCardText": "Magnetic fields are essential for energy conversion, represented by closed-loop flux lines. Key principles include: current creating magnetic fields, changing magnetic fields inducing voltage, current in a magnetic field experiencing force, and moving wires in a magnetic field inducing voltage.",
+      "generationType": "pre-generated",
+      "relatedArea": "Fundamentals of Electromagnetism and Magnetic Fields",
+      "suggestionImage": "Illustrations of magnetic field lines around a bar magnet and a current-carrying wire."
+    },
+    {
+      "conceptTitle": "Historical Development and Core Laws of Electromagnetism",
+      "createdAt": 1753600297642,
+      "flashCardText": "Oersted discovered currents create magnetic fields. Ampère formalized this with Ampère's Law. Faraday discovered Faraday's Law, showing changing magnetic fields induce voltage. These laws are fundamental to electrical machines.",
+      "generationType": "pre-generated",
+      "relatedArea": "Historical Development and Core Laws of Electromagnetism",
+      "suggestionImage": "Portraits of Oersted, Ampère, and Faraday."
+    },
+    {
+      "conceptTitle": "Ampere's Law and Magnetic Field Production",
+      "createdAt": 1753600297674,
+      "flashCardText": "Ampere's Law relates electric current to the magnetic field it produces: the line integral of magnetic field intensity (H) around a closed loop is proportional to the total current (Σi) enclosed. The Right-Hand Rule determines field direction.",
+      "generationType": "pre-generated",
+      "relatedArea": "Ampere's Law and Magnetic Field Production",
+      "suggestionImage": "A diagram illustrating Ampere's Law with a current-carrying wire and a closed loop."
+    },
+    {
+      "conceptTitle": "Faraday's Law of Induction and Lenz's Law",
+      "createdAt": 1753600297708,
+      "flashCardText": "Faraday's Law states induced voltage (EMF) in a coil is proportional to the number of turns (N) and the rate of change of magnetic flux (dΦ/dt). Lenz's Law explains the negative sign: the induced voltage opposes the change in magnetic flux.",
+      "generationType": "pre-generated",
+      "relatedArea": "Faraday's Law of Induction and Lenz's Law",
+      "suggestionImage": "A coil of wire with a magnet moving in and out, showing induced current."
+    },
+    {
+      "conceptTitle": "Magnetic Circuit Analysis and Analogies to Electric Circuits",
+      "createdAt": 1753600297740,
+      "flashCardText": "Magnetic circuits are analogous to electric circuits, using concepts like magnetomotive force (MMF) to drive magnetic flux (Φ) and reluctance (ℛ) to oppose it. MMF = NI. Reluctance depends on path length, area, and permeability.",
+      "generationType": "pre-generated",
+      "relatedArea": "Magnetic Circuit Analysis and Analogies to Electric Circuits",
+      "suggestionImage": "A comparison diagram showing analogies between electric and magnetic circuits."
+    },
+    {
+      "conceptTitle": "Cycle Time (Period) and Frequency",
+      "createdAt": 1753600662397,
+      "flashCardText": "Cycle time, also known as the period, is the duration it takes for a signal to complete one full cycle. Frequency measures how often these cycles repeat within a given timeframe. They are inversely related.",
+      "generationType": "pre-generated",
+      "relatedArea": "Cycle Time (Period) and Frequency",
+      "suggestionImage": "A diagram showing a waveform with one complete cycle highlighted, indicating its duration (cycle time) and how many such cycles occur in a second (frequency)."
+    }
+  ],
+  "nextQuestion": {
+    "answers": [
+      "It is the duration it takes for a signal to complete one full cycle.",
+      "It measures how often cycles repeat within a given timeframe.",
+      "It is the opposition a capacitor presents to the flow of alternating current.",
+      "It is the opposition an inductor presents to the flow of alternating current."
+    ],
+    "concept": "Cycle Time (Period) and Frequency",
+    "correctAnswer": "It measures how often cycles repeat within a given timeframe.",
+    "createdAt": 1753600662315,
+    "difficulty": "easy",
+    "hint": "Think about the unit of frequency, Hertz (Hz), which means cycles per second.",
+    "message": "It looks like we need to reinforce the concepts of cycle time and frequency. I've added a flashcard to help you review. Let's try another question on frequency.",
+    "question": "What is frequency?",
+    "questionRephrased": "Define frequency in the context of electrical signals."
+  },
+  "studentProgress": {
+    "Ampere's Law and Magnetic Field Production": {
+      "difficulty": "easy",
+      "mastery": "beginner",
+      "mistakes": 0,
+      "needsReview": false,
+      "questionsCorrect": 0,
+      "questionsTotal": 0
+    },
+    "Capacitive Reactance": {
+      "difficulty": "easy",
+      "mastery": "beginner",
+      "mistakes": 0,
+      "needsReview": false,
+      "questionsCorrect": 1,
+      "questionsTotal": 1
+    },
+    "Capacitor Fundamentals and Charge Storage": {
+      "difficulty": "easy",
+      "mastery": "beginner",
+      "mistakes": 0,
+      "needsReview": false,
+      "questionsCorrect": 0,
+      "questionsTotal": 0
+    },
+    "Cycle Time (Period) and Frequency": {
+      "difficulty": "easy",
+      "lastMistakeAt": 1753600298205,
+      "mastery": "beginner",
+      "mistakes": 2,
+      "needsReview": true,
+      "questionsCorrect": 0,
+      "questionsTotal": 2
+    },
+    "Factors Affecting Conductor Resistance": {
+      "difficulty": "easy",
+      "lastMistakeAt": 1753600297995,
+      "mastery": "beginner",
+      "mistakes": 1,
+      "needsReview": true,
+      "questionsCorrect": 0,
+      "questionsTotal": 1
+    },
+    "Faraday's Law of Induction and Lenz's Law": {
+      "difficulty": "easy",
+      "mastery": "beginner",
+      "mistakes": 0,
+      "needsReview": false,
+      "questionsCorrect": 0,
+      "questionsTotal": 0
+    },
+    "Fundamentals of Electromagnetism and Magnetic Fields": {
+      "difficulty": "easy",
+      "mastery": "beginner",
+      "mistakes": 0,
+      "needsReview": false,
+      "questionsCorrect": 0,
+      "questionsTotal": 0
+    },
+    "Historical Development and Core Laws of Electromagnetism": {
+      "difficulty": "easy",
+      "mastery": "beginner",
+      "mistakes": 0,
+      "needsReview": false,
+      "questionsCorrect": 0,
+      "questionsTotal": 0
+    },
+    "Inductive Reactance": {
+      "difficulty": "easy",
+      "lastMistakeAt": 1753600298105,
+      "mastery": "beginner",
+      "mistakes": 1,
+      "needsReview": true,
+      "questionsCorrect": 0,
+      "questionsTotal": 1
+    },
+    "Inductors and Magnetic Flux Storage": {
+      "difficulty": "easy",
+      "mastery": "beginner",
+      "mistakes": 0,
+      "needsReview": false,
+      "questionsCorrect": 0,
+      "questionsTotal": 0
+    },
+    "Magnetic Circuit Analysis and Analogies to Electric Circuits": {
+      "difficulty": "easy",
+      "mastery": "beginner",
+      "mistakes": 0,
+      "needsReview": false,
+      "questionsCorrect": 0,
+      "questionsTotal": 0
+    },
+    "Proximity Effect": {
+      "difficulty": "easy",
+      "mastery": "beginner",
+      "mistakes": 0,
+      "needsReview": false,
+      "questionsCorrect": 0,
+      "questionsTotal": 0
+    },
+    "Resistors in AC Circuits and Power Consumption": {
+      "difficulty": "easy",
+      "mastery": "beginner",
+      "mistakes": 0,
+      "needsReview": false,
+      "questionsCorrect": 0,
+      "questionsTotal": 0
+    },
+    "Skin Effect and Skin Depth": {
+      "difficulty": "easy",
+      "mastery": "beginner",
+      "mistakes": 0,
+      "needsReview": false,
+      "questionsCorrect": 0,
+      "questionsTotal": 0
+    }
+  }
+}

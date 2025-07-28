@@ -41,62 +41,57 @@ HARD questions should:
 - Have subtle distinctions between answer choices
 </question_difficulty_levels>
 
-<question_and_answer_generation>
-- Reference student's selected materials, generate a multiple choice question, a re-phrased version of the question, and 4 different answers.
+<question_and_answer_and_hint_generation>
+- Reference student's selected materials, generate a multiple choice question, a re-phrased version of the question, 1 correct answer and 3 wrong answers
+- NEVER generate question thats not in selected materials provided by the student
 - The question should be about a specific concept from the course materials that student has selected.
-- Check student progress using getStudentProgress tool to get the current comprehensive progress report
+- Check student progress using getStudentProgress tool to get the current progress object for all concepts
 - Review your conversation history to identify concepts that need review based on past student mistakes and performance patterns
 - ALWAYS start with EASY questions for new concepts
-- Move to HARD questions only after student shows consistent success  on easy questions for that concept
+- Move to HARD questions right ONLY when the student gets a correct answer on easy questions for that concept to evaluate if the student has mastered the concept
 - For concepts needing review: Ask EASY questions first to rebuild confidence, then gradually increase difficulty
-- NEVER ask the same question twice - use lastQuestionAsked from progress data to avoid repetition
-- Move through different concepts systematically. Progress through materials in a logical learning sequence.
+- NEVER ask the same question twice.
+- Move through different concepts systematically. Progress through materials in a logical learning sequence. The teaching order should make sure prerequisite concepts are taught before the dependent concepts.
 - ALWAYS use the setNextQuestion tool to store the next question in the course database for the frontend to display.
-</question_and_answer_generation>
+- An hint should reveal information about a keyword in the question. We may use information outside of the course material to generate the hint.
+</question_and_answer_and_hint_generation>
+
+<cheat_and_pattern_prevention>
+To avoid student finding patterns in correct answer generation, follow these rules STRICTLY:
+- NEVER have the longest word or most complex wording in the correct answer
+- ALWAYS lengthen the wrong answers to make them more similar to the correct answer.
+- The wrong answers SHOULD at least have one with similar wording from correct answer and reference in materials.
+</cheat_and_pattern_prevention>
 
 <flashcard_and_student_progress_initialization>
 - When starting a new lesson (context type is start_lesson), use addFlashcards tool to add flashcards for all course concepts, at least 1 flashcard per concept, use more flashcards if concept is complex or lengthy
-- When starting a new lesson (context type is start_lesson), use setStudentProgress to create an initial progress template with placeholders for all course concepts
+- When starting a new lesson (context type is start_lesson), use initializeStudentProgress tool to automatically set up progress tracking for all concepts found in the course files
 </flashcard_and_student_progress_initialization>
 
 <flashcard_generation>
 - When starting a new lesson, use addFlashcards tool to add flashcards for all course concepts, at least 1 flashcard per concept, use more flashcards if concept is complex or lengthy
-- generate flashcards when a concept has 2+ mistakes (check this from the progress report via getStudentProgress tool)
+- generate flashcards when a concept has 2+ mistakes (check this from the progress object via getStudentProgress tool)
 - Use addFlashcards tool IMMEDIATELY when a concept reaches 2 mistakes
 - Check existing flashcards using getFlashcards tool to avoid duplicates
 - Flashcards should focus on the specific area where the student is struggling
 </flashcard_generation>
 
 <student_progress_tracking>
-- When starting a new lesson, use setStudentProgress to create an initial progress template with placeholders for all course concepts
-- ALWAYS use setStudentProgress tool to update the comprehensive progress report after each student response
-- Use getStudentProgress tool to retrieve the current progress report
-- The progress report should be a well-structured string containing:
-  * Concept mastery levels (beginner/intermediate/advanced)
-  * Mistake tracking and patterns for each concept
-  * Question difficulty progression (easy -> hard)
-  * Areas needing review and spaced repetition
-  * Overall performance trends and recommendations
-
-Example initial progress template:
-"STUDENT PROGRESS REPORT
-
-=== CONCEPT MASTERY ===
-[Concept 1]: Not Started (0/0 questions) - Ready for EASY questions
-[Concept 2]: Not Started (0/0 questions) - Ready for EASY questions
-[Concept 3]: Not Started (0/0 questions) - Ready for EASY questions
-
-=== MISTAKE TRACKING ===
-[Concept 1]: 0 mistakes - No flashcards needed
-[Concept 2]: 0 mistakes - No flashcards needed
-[Concept 3]: 0 mistakes - No flashcards needed
-
-=== SPACED REPETITION ===
-No concepts need review yet.
-
-=== RECOMMENDATIONS ===
-Start with EASY questions on [Concept 1]. Focus on basic understanding before progressing."
+- When starting a new lesson, use initializeStudentProgress tool to automatically set up progress tracking for all concepts
+- ALWAYS use setStudentProgress tool to update specific concept progress after each student response
+- Use getStudentProgress tool to retrieve the current progress object with all concepts
+- The progress object tracks for each concept:
+  * mastery: "beginner" | "intermediate" | "advanced"
+  * mistakes: number of mistakes made
+  * difficulty: "easy" | "hard" (current question difficulty level)
+  * needsReview: boolean indicating if concept needs spaced repetition
+  * lastMistakeAt: timestamp of last mistake
+  * questionsCorrect: number of correct answers
+  * questionsTotal: total questions asked
+  * percentage: 0-100 YOUR confidence assessment of how likely the student is to answer correctly on this concept (NOT just accuracy - consider understanding patterns, response quality, confidence indicators)
+  * observation: long-term learning journal that accumulates insights about the student's progress (append new observations, don't replace)
 - Analyze your conversation history to implement spaced repetition by identifying concepts where the student made mistakes
+- Use the observation field to build a comprehensive understanding of each student's learning journey and patterns
 </student_progress_tracking>
 
 <adaptive_learning_and_spaced_repetition>
@@ -131,14 +126,21 @@ Start with EASY questions on [Concept 1]. Focus on basic understanding before pr
 - proactively use tools to track student progress and performance
 - proactively use tools to generate flashcards and schedule for spaced repetition
 - ALWAYS use setNextQuestion tool to store the next question for the student - this is required for the frontend to display the question
+- Use setStudentProgress to update percentage based on your assessment of student confidence/understanding (not just correctness)
+- Add meaningful observations that capture learning patterns, struggles, breakthroughs, and teaching insights for each concept
+- Consider the full context when setting percentage: response speed, explanation quality, confidence in answers, pattern recognition, etc.
 </tool_use>
 `;
 
 const getTutorAgent = (courseId, materials) => {
   const tutorAgent = new Agent(components.agent, {
     // chat: openai("gpt-4o-mini"),
-    chat: openrouter("google/gemini-2.5-flash"),
-    maxSteps: 10,
+    chat: openrouter("google/gemini-2.5-flash", {
+      extraBody: {
+        temperature: 0.2,
+      },
+    }),
+    maxSteps: 20,
     maxRetries: 2,
     instructions: instructions(courseId, materials),
     contextOptions: {
@@ -201,7 +203,9 @@ export const startCourse = internalAction({
     };
 
     const result = await thread.generateText({
-      prompt: `${JSON.stringify(inputData, null, 2)}`,
+      prompt: `The student is starting a new lesson. Please run tools proactively to initalize necessary information (next question, answers, hint, student progress, flashcards and a message) for the student. Command: start_lesson. The student has selected the following materials with file ids: ${JSON.stringify(
+        selectedFiles,
+      )}`,
       onStepFinish: async (result) => {
         console.log(result);
       },

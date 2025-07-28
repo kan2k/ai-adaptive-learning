@@ -39,16 +39,37 @@ export default defineSchema({
           ),
         ),
         studentProgressReport: v.optional(v.string()),
+        studentProgress: v.optional(
+          v.record(
+            v.string(), // concept name as key
+            v.object({
+              mastery: v.union(
+                v.literal("beginner"),
+                v.literal("intermediate"),
+                v.literal("advanced"),
+              ),
+              mistakes: v.number(),
+              difficulty: v.union(v.literal("easy"), v.literal("hard")),
+              needsReview: v.boolean(),
+              lastMistakeAt: v.optional(v.number()),
+              questionsCorrect: v.number(),
+              questionsTotal: v.number(),
+              percentage: v.number(), // Tutor's confidence assessment (0-100) of student's likelihood to answer correctly
+              observation: v.string(), // Long-term learning journal for tracking student progress patterns
+            }),
+          ),
+        ),
       }),
     ),
   }).index("by_user", ["createdBy"]),
 
   files: defineTable({
-    storageId: v.id("_storage"),
+    storageId: v.optional(v.id("_storage")), // Optional for text-only files
     name: v.string(),
     type: v.string(),
     size: v.number(),
     uploadedAt: v.number(),
+    textContent: v.optional(v.string()), // For extracted PDF text
     metadata: v.optional(
       v.object({
         relatedArea: v.string(),

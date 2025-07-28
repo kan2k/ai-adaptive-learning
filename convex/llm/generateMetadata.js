@@ -1,3 +1,5 @@
+"use node";
+
 import { internalAction, query } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
@@ -64,12 +66,353 @@ const conceptSchema = z.object({
     .describe("Array of distinct concepts extracted from this file"),
 });
 
+// Configuration constants
+const MAX_CHUNK_SIZE = 20000; // Characters per chunk - can be adjusted
+const CHUNK_OVERLAP = 1000; // Overlap between chunks to maintain context
+
+// Function to split text into overlapping chunks
+const splitTextIntoChunks = (text, maxSize, overlap) => {
+  const chunks = [];
+  let start = 0;
+
+  while (start < text.length) {
+    let end = start + maxSize;
+
+    // If this isn't the last chunk, try to break at a natural boundary
+    if (end < text.length) {
+      const lastPeriod = text.lastIndexOf(".", end);
+      const lastNewline = text.lastIndexOf("\n", end);
+      const breakPoint = Math.max(lastPeriod, lastNewline);
+
+      if (breakPoint > start + maxSize * 0.5) {
+        end = breakPoint + 1;
+      }
+    }
+
+    chunks.push({
+      text: text.slice(start, end),
+      chunkIndex: chunks.length,
+      start,
+      end: Math.min(end, text.length),
+    });
+
+    // Move start position with overlap
+    start = end - overlap;
+    if (start >= text.length) break;
+  }
+
+  return chunks;
+};
+
+// Function to merge concepts from multiple chunks
+const mergeConcepts = (conceptArrays, fileName) => {
+  const allConcepts = conceptArrays.flat();
+  const mergedConcepts = [];
+  const seenTitles = new Set();
+
+  // Deduplicate concepts by title (case-insensitive)
+  for (const concept of allConcepts) {
+    const normalizedTitle = concept.title.toLowerCase().trim();
+    if (!seenTitles.has(normalizedTitle)) {
+      seenTitles.add(normalizedTitle);
+      mergedConcepts.push(concept);
+    }
+  }
+
+  // Limit to reasonable number of concepts
+  const maxConcepts = 12;
+  return mergedConcepts.slice(0, maxConcepts);
+};
+
+// Function to merge file metadata from multiple chunks
+const mergeFileMetadata = (metadataArray, fileName) => {
+  // Use the first non-empty metadata as base
+  const baseMetadata =
+    metadataArray.find((m) => m.relatedArea && m.author && m.description) ||
+    metadataArray[0];
+
+  if (!baseMetadata) {
+    return {
+      relatedArea: "Unknown",
+      author: "Unknown",
+      description: `Analysis of ${fileName}`,
+    };
+  }
+
+  return {
+    relatedArea: baseMetadata.relatedArea || "Unknown",
+    author: baseMetadata.author || "Unknown",
+    description: baseMetadata.description || `Analysis of ${fileName}`,
+  };
+};
+
+export const generateMetadataFromText = internalAction({
+  args: {
+    fileId: v.id("files"),
+  },
+  handler: async (ctx, { fileId }) => {
+    console.log(`Starting metadata generation from text for file: ${fileId}`);
+
+    try {
+      // Update status to processing
+      await ctx.runMutation("files:saveMetadata", {
+        fileId: fileId,
+        metadata: {
+          relatedArea: "",
+          author: "",
+          description: `Processing content...`,
+          concepts: [],
+          generatedAt: Date.now(),
+          status: "processing",
+        },
+      });
+
+      console.log(`Getting file data for: ${fileId}`);
+      const file = await ctx.runQuery("files:getFileById", {
+        fileId: fileId,
+      });
+
+      if (!file || !file.textContent) {
+        throw new Error("File not found or no text content available");
+      }
+
+      const textLength = file.textContent.length;
+      console.log(
+        `Text content found, length: ${textLength} characters for file: ${fileId}`,
+      );
+
+      // Check if we need to split into chunks
+      if (textLength <= MAX_CHUNK_SIZE) {
+        console.log(
+          `Text is small enough, processing as single chunk for file: ${fileId}`,
+        );
+
+        // Process as single chunk (original logic)
+        const result = await processSingleChunk(
+          file.textContent,
+          file.name,
+          fileId,
+          1,
+          1,
+        );
+
+        const metadata = {
+          relatedArea: result.fileMetadata.relatedArea || "Unknown",
+          author: result.fileMetadata.author || "Unknown",
+          description:
+            result.fileMetadata.description || "Content analysis completed",
+          concepts: Array.isArray(result.concepts) ? result.concepts : [],
+          generatedAt: Date.now(),
+          status: "success",
+        };
+
+        await ctx.runMutation("files:saveMetadata", {
+          fileId: fileId,
+          metadata,
+        });
+
+        console.log(
+          `Metadata generation completed successfully for file: ${fileId}`,
+        );
+        return;
+      }
+
+      // Split text into chunks for large documents
+      console.log(
+        `Text is large (${textLength} chars), splitting into chunks for file: ${fileId}`,
+      );
+      const chunks = splitTextIntoChunks(
+        file.textContent,
+        MAX_CHUNK_SIZE,
+        CHUNK_OVERLAP,
+      );
+      console.log(`Split into ${chunks.length} chunks for file: ${fileId}`);
+
+      // Process each chunk
+      const chunkResults = [];
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        console.log(
+          `Processing chunk ${i + 1}/${chunks.length} (${chunk.text.length} chars) for file: ${fileId}`,
+        );
+
+        try {
+          const result = await processSingleChunk(
+            chunk.text,
+            file.name,
+            fileId,
+            i + 1,
+            chunks.length,
+          );
+          chunkResults.push(result);
+        } catch (chunkError) {
+          console.error(
+            `Error processing chunk ${i + 1} for file ${fileId}:`,
+            chunkError,
+          );
+          // Continue with other chunks even if one fails
+        }
+      }
+
+      if (chunkResults.length === 0) {
+        throw new Error("All chunks failed to process");
+      }
+
+      console.log(
+        `Successfully processed ${chunkResults.length}/${chunks.length} chunks for file: ${fileId}`,
+      );
+
+      // Merge results from all chunks
+      const allFileMetadata = chunkResults.map((r) => r.fileMetadata);
+      const allConcepts = chunkResults.map((r) => r.concepts);
+
+      const mergedFileMetadata = mergeFileMetadata(allFileMetadata, file.name);
+      const mergedConcepts = mergeConcepts(allConcepts, file.name);
+
+      const metadata = {
+        relatedArea: mergedFileMetadata.relatedArea,
+        author: mergedFileMetadata.author,
+        description: mergedFileMetadata.description,
+        concepts: mergedConcepts,
+        generatedAt: Date.now(),
+        status: "success",
+      };
+
+      console.log(`Saving merged metadata for file: ${fileId}`, {
+        conceptCount: metadata.concepts.length,
+        relatedArea: metadata.relatedArea,
+        chunksProcessed: chunkResults.length,
+      });
+
+      await ctx.runMutation("files:saveMetadata", {
+        fileId: fileId,
+        metadata,
+      });
+
+      console.log(
+        `Metadata generation completed successfully for file: ${fileId}`,
+      );
+    } catch (error) {
+      console.error(`Error generating metadata for text file ${fileId}:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+
+      // Determine error type for better user feedback
+      let errorDescription = "Failed to process text content";
+      if (error.message.includes("File not found")) {
+        errorDescription = "File not found or no text content available";
+      } else if (error.message.includes("AI analysis failed")) {
+        errorDescription = "AI analysis service temporarily unavailable";
+      } else if (error.message.includes("All chunks failed")) {
+        errorDescription = "Failed to process document chunks";
+      }
+
+      await ctx.runMutation("files:saveMetadata", {
+        fileId: fileId,
+        metadata: {
+          relatedArea: "",
+          author: "",
+          description: errorDescription,
+          concepts: [],
+          generatedAt: Date.now(),
+          status: "error",
+        },
+      });
+
+      // Re-throw for Convex to handle as needed
+      throw error;
+    }
+  },
+});
+
+// Helper function to process a single chunk of text
+const processSingleChunk = async (
+  chunkText,
+  fileName,
+  fileId,
+  chunkIndex,
+  totalChunks,
+) => {
+  let retryCount = 0;
+  const maxRetries = 3;
+
+  while (retryCount < maxRetries) {
+    try {
+      console.log(
+        `AI analysis attempt ${retryCount + 1} for chunk ${chunkIndex}/${totalChunks} of file: ${fileId}`,
+      );
+
+      const prompt =
+        totalChunks > 1
+          ? `Please analyze this document chunk (part ${chunkIndex} of ${totalChunks}) and extract key learning concepts. The document name is "${fileName}".
+
+Focus on identifying distinct educational concepts within this chunk. If this is not the first chunk, focus on new concepts not likely covered in previous sections.
+
+Document text chunk:
+${chunkText}
+
+Return the response in the specified JSON format.`
+          : `Please analyze this document text and extract the key learning concepts. The document name is "${fileName}".
+
+Document text:
+${chunkText}
+
+Return the response in the specified JSON format.`;
+
+      const result = await generateObject({
+        model: openrouter.chat("google/gemini-2.5-flash", {
+          extraBody: {
+            temperature: 0.1,
+          },
+        }),
+        system: getSystemPrompt(),
+        schema: conceptSchema,
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      });
+
+      console.log(
+        `AI analysis completed successfully for chunk ${chunkIndex}/${totalChunks} of file: ${fileId}`,
+      );
+      return result.object;
+    } catch (aiError) {
+      retryCount++;
+      console.error(
+        `AI analysis attempt ${retryCount} failed for chunk ${chunkIndex} of file ${fileId}:`,
+        aiError,
+      );
+
+      if (retryCount >= maxRetries) {
+        throw new Error(
+          `AI analysis failed after ${maxRetries} attempts for chunk ${chunkIndex}: ${aiError.message}`,
+        );
+      }
+
+      // Wait before retry (exponential backoff)
+      const waitTime = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s
+      console.log(
+        `Retrying AI analysis in ${waitTime}ms for chunk ${chunkIndex} of file: ${fileId}`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+    }
+  }
+};
+
 export const generateMetadata = internalAction({
   args: {
     fileId: v.id("files"),
   },
   handler: async (ctx, { fileId }) => {
+    console.log(`Starting metadata generation for file: ${fileId}`);
+
     try {
+      // Update status to processing
       await ctx.runMutation("files:saveMetadata", {
         fileId: fileId,
         metadata: {
@@ -82,70 +425,287 @@ export const generateMetadata = internalAction({
         },
       });
 
+      console.log(`Getting file URL for: ${fileId}`);
       const fileUrl = await ctx.runQuery("files:getFileUrl", {
         fileId: fileId,
       });
 
-      const pdfResult = await ctx.runAction(
-        internal.utils.pdf.encodePDFToBase64,
-        { fileUrl: fileUrl },
-      );
+      if (!fileUrl) {
+        throw new Error("File URL not found or file does not exist");
+      }
 
-      // Call OpenRouter API with the base64 PDF
-      const { object } = await generateObject({
-        model: openrouter.chat("google/gemini-2.5-flash", {
-          extraBody: {
-            temperature: 0.1,
-          },
-        }),
-        system: getSystemPrompt(),
-        schema: conceptSchema,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Please analyze this PDF document and extract the key learning concepts. Return the response in the specified JSON format.`,
+      console.log(`File URL retrieved, starting PDF encoding for: ${fileId}`);
+
+      // Encode PDF to base64 directly here to avoid return size limitations
+      let base64PDF;
+      try {
+        console.log(`Fetching PDF from URL for file: ${fileId}`);
+        const response = await fetch(fileUrl, {
+          timeout: 60000, // 60 second timeout
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        // Check content length before processing
+        const contentLength = response.headers.get("content-length");
+        if (contentLength) {
+          const fileSizeMB = parseInt(contentLength) / (1024 * 1024);
+          console.log(
+            `PDF content-length: ${fileSizeMB.toFixed(2)} MB for file: ${fileId}`,
+          );
+
+          // Reject files larger than 25MB to prevent memory issues
+          if (fileSizeMB > 25) {
+            throw new Error(
+              `File too large (${fileSizeMB.toFixed(2)} MB). Maximum supported size is 25MB to ensure reliable processing.`,
+            );
+          }
+
+          // Warn about large files
+          if (fileSizeMB > 15) {
+            console.warn(
+              `Large PDF detected (${fileSizeMB.toFixed(2)} MB) for file: ${fileId}, processing may be slow`,
+            );
+          }
+        }
+
+        console.log(
+          `PDF fetched successfully, converting to buffer for file: ${fileId}`,
+        );
+
+        // Process in chunks to avoid memory spikes
+        const chunks = [];
+        const reader = response.body.getReader();
+        let totalSize = 0;
+        const maxSize = 25 * 1024 * 1024; // 25MB limit
+
+        // Add timeout for chunked reading
+        const chunkTimeout = 30000; // 30 seconds for chunked reading
+        const startTime = Date.now();
+
+        try {
+          while (true) {
+            // Check if we've exceeded the timeout
+            if (Date.now() - startTime > chunkTimeout) {
+              throw new Error(
+                `Chunked reading timeout after ${chunkTimeout / 1000} seconds`,
+              );
+            }
+
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            totalSize += value.length;
+            if (totalSize > maxSize) {
+              throw new Error(`File size exceeds 25MB limit during processing`);
+            }
+
+            chunks.push(value);
+
+            // Log progress every 5MB
+            if (chunks.length % 100 === 0) {
+              console.log(
+                `Processed ${(totalSize / (1024 * 1024)).toFixed(2)} MB so far for file: ${fileId}`,
+              );
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+
+        console.log(
+          `PDF chunks collected, total size: ${(totalSize / (1024 * 1024)).toFixed(2)} MB for file: ${fileId}`,
+        );
+
+        // Buffer creation with error handling
+        try {
+          // For files > 15MB, use optimized buffer creation
+          if (totalSize > 15 * 1024 * 1024) {
+            // > 15MB
+            console.log(
+              `Large file detected, using optimized buffer creation for file: ${fileId}`,
+            );
+
+            // Create buffer more efficiently for large files
+            console.log(
+              `Creating buffer from ${chunks.length} chunks for file: ${fileId}`,
+            );
+            const bufferChunks = chunks.map((chunk) => Buffer.from(chunk));
+            console.log(
+              `Buffer chunks created, concatenating for file: ${fileId}`,
+            );
+            const buffer = Buffer.concat(bufferChunks);
+
+            // Clear chunks array to free memory
+            chunks.length = 0;
+
+            console.log(`Converting large file to base64 for file: ${fileId}`);
+            base64PDF = `data:application/pdf;base64,${buffer.toString("base64")}`;
+          } else {
+            // Original approach for smaller files
+            console.log(
+              `Converting to base64 using standard approach for file: ${fileId}`,
+            );
+            const arrayBuffer = new Uint8Array(totalSize);
+            let offset = 0;
+            for (const chunk of chunks) {
+              arrayBuffer.set(chunk, offset);
+              offset += chunk.length;
+            }
+
+            const buffer = Buffer.from(arrayBuffer);
+            base64PDF = `data:application/pdf;base64,${buffer.toString("base64")}`;
+          }
+
+          console.log(`PDF successfully encoded to base64 for file: ${fileId}`);
+        } catch (bufferError) {
+          console.error(
+            `Error during buffer creation/base64 conversion for file ${fileId}:`,
+            bufferError,
+          );
+          throw new Error(`Buffer processing failed: ${bufferError.message}`);
+        }
+      } catch (error) {
+        console.error(
+          `Error encoding PDF to base64 for file ${fileId}:`,
+          error,
+        );
+        throw new Error(`Failed to encode PDF: ${error.message}`);
+      }
+
+      console.log(`Starting AI analysis for file: ${fileId}`);
+
+      // Call OpenRouter API with the base64 PDF with retry logic
+      let object;
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        try {
+          console.log(
+            `AI analysis attempt ${retryCount + 1} for file: ${fileId}`,
+          );
+
+          const result = await generateObject({
+            model: openrouter.chat("google/gemini-2.5-flash", {
+              extraBody: {
+                temperature: 0.1,
               },
+            }),
+            system: getSystemPrompt(),
+            schema: conceptSchema,
+            messages: [
               {
-                type: "file",
-                data: pdfResult.base64PDF,
-                mimeType: "application/pdf",
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: `Please analyze this PDF document and extract the key learning concepts. Return the response in the specified JSON format.`,
+                  },
+                  {
+                    type: "file",
+                    data: base64PDF,
+                    mimeType: "application/pdf",
+                  },
+                ],
               },
             ],
-          },
-        ],
-      });
+          });
 
-      console.log("object", object);
+          object = result.object;
+          console.log(`AI analysis completed successfully for file: ${fileId}`);
+          break; // Success, exit retry loop
+        } catch (aiError) {
+          retryCount++;
+          console.error(
+            `AI analysis attempt ${retryCount} failed for file ${fileId}:`,
+            aiError,
+          );
+
+          if (retryCount >= maxRetries) {
+            throw new Error(
+              `AI analysis failed after ${maxRetries} attempts: ${aiError.message}`,
+            );
+          }
+
+          // Wait before retry (exponential backoff)
+          const waitTime = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s
+          console.log(
+            `Retrying AI analysis in ${waitTime}ms for file: ${fileId}`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
+        }
+      }
+
+      console.log(`Processing AI response for file: ${fileId}`, object);
+
+      // Validate the response structure
+      if (!object || !object.fileMetadata || !object.concepts) {
+        throw new Error(
+          "Invalid AI response structure: missing required fields",
+        );
+      }
 
       const metadata = {
-        relatedArea: object.fileMetadata.relatedArea,
-        author: object.fileMetadata.author,
-        description: object.fileMetadata.description,
-        concepts: object.concepts,
+        relatedArea: object.fileMetadata.relatedArea || "Unknown",
+        author: object.fileMetadata.author || "Unknown",
+        description:
+          object.fileMetadata.description || "Content analysis completed",
+        concepts: Array.isArray(object.concepts) ? object.concepts : [],
         generatedAt: Date.now(),
         status: "success",
       };
+
+      console.log(`Saving metadata for file: ${fileId}`, {
+        conceptCount: metadata.concepts.length,
+        relatedArea: metadata.relatedArea,
+      });
 
       await ctx.runMutation("files:saveMetadata", {
         fileId: fileId,
         metadata,
       });
+
+      console.log(
+        `Metadata generation completed successfully for file: ${fileId}`,
+      );
     } catch (error) {
-      console.error(`Error generating metadata for file ${fileId}:`, error);
+      console.error(`Error generating metadata for file ${fileId}:`, {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+
+      // Determine error type for better user feedback
+      let errorDescription = "Failed to process file";
+      if (error.message.includes("File URL not found")) {
+        errorDescription = "File not found or inaccessible";
+      } else if (error.message.includes("Failed to encode PDF")) {
+        errorDescription = "Unable to read PDF file";
+      } else if (error.message.includes("AI analysis failed")) {
+        errorDescription = "AI analysis service temporarily unavailable";
+      } else if (error.message.includes("HTTP 4")) {
+        errorDescription = "File access denied";
+      } else if (error.message.includes("timeout")) {
+        errorDescription = "File processing timeout - file may be too large";
+      }
+
       await ctx.runMutation("files:saveMetadata", {
         fileId: fileId,
         metadata: {
           relatedArea: "",
           author: "",
-          description: `Failed to process file`,
+          description: errorDescription,
           concepts: [],
           generatedAt: Date.now(),
           status: "error",
         },
       });
+
+      // Re-throw for Convex to handle as needed
+      throw error;
     }
   },
 });

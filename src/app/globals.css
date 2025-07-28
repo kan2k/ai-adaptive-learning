@@ -142,7 +142,7 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    @apply leading-7;
+    @apply leading-5;
   }
   body {
     @apply bg-background text-foreground;

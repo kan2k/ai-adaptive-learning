@@ -6,13 +6,57 @@ import { useMutation } from "convex/react";
 import { useUser } from "@clerk/clerk-react";
 import { api } from "../../convex/_generated/api";
 
+// Function to extract text from PDF file
+const extractTextFromPDF = async (file) => {
+  // Dynamically import pdfjs-dist only when needed (client-side)
+  const pdfjsLib = await import("pdfjs-dist");
+
+  // Configure PDF.js worker - use local worker file
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "/js/pdf.worker.min.js";
+
+  return new Promise((resolve, reject) => {
+    const fileReader = new FileReader();
+
+    fileReader.onload = async function () {
+      try {
+        const typedarray = new Uint8Array(this.result);
+        const pdf = await pdfjsLib.getDocument(typedarray).promise;
+
+        let fullText = "";
+
+        // Extract text from each page
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item) => item.str).join(" ");
+          fullText += pageText + "\n\n";
+        }
+
+        resolve(fullText.trim());
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    fileReader.onerror = () => reject(new Error("Failed to read file"));
+    fileReader.readAsArrayBuffer(file);
+  });
+};
+
 export default function UploadDropZone({ courseId, onUploadComplete }) {
   const { user } = useUser();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
+  const [progressStages, setProgressStages] = useState({});
 
-  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-  const saveFile = useMutation(api.files.saveFile);
+  const saveTextFile = useMutation(api.files.saveTextFile);
+
+  const getProgressStage = (progress) => {
+    if (progress < 20) return "Starting...";
+    if (progress < 60) return "Extracting text...";
+    if (progress < 100) return "Saving content...";
+    return "Complete!";
+  };
 
   const onDrop = useCallback(
     async (acceptedFiles) => {
@@ -23,36 +67,39 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
       for (const file of acceptedFiles) {
         try {
           setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }));
+          setProgressStages((prev) => ({
+            ...prev,
+            [file.name]: "Starting...",
+          }));
 
-          // Generate upload URL
-          const uploadUrl = await generateUploadUrl();
+          // Extract text from PDF
+          console.log(`Extracting text from: ${file.name}`);
+          setUploadProgress((prev) => ({ ...prev, [file.name]: 20 }));
+          setProgressStages((prev) => ({
+            ...prev,
+            [file.name]: "Extracting text...",
+          }));
 
-          setUploadProgress((prev) => ({ ...prev, [file.name]: 30 }));
+          const textContent = await extractTextFromPDF(file);
+          console.log(
+            `Text extracted, length: ${textContent.length} characters`,
+          );
+          setUploadProgress((prev) => ({ ...prev, [file.name]: 60 }));
+          setProgressStages((prev) => ({
+            ...prev,
+            [file.name]: "Saving content...",
+          }));
 
-          // Upload file to Convex storage
-          const response = await fetch(uploadUrl, {
-            method: "POST",
-            headers: { "Content-Type": file.type },
-            body: file,
-          });
-
-          if (!response.ok) {
-            throw new Error("Upload failed");
-          }
-
-          const { storageId } = await response.json();
-          setUploadProgress((prev) => ({ ...prev, [file.name]: 75 }));
-
-          // Save file metadata to database
-          await saveFile({
-            storageId,
+          // Save text content to database
+          await saveTextFile({
             name: file.name,
-            type: file.type,
-            size: file.size,
+            textContent: textContent,
+            originalSize: file.size,
             courseId,
           });
 
           setUploadProgress((prev) => ({ ...prev, [file.name]: 100 }));
+          setProgressStages((prev) => ({ ...prev, [file.name]: "Complete!" }));
 
           // Remove progress after a delay
           setTimeout(() => {
@@ -61,21 +108,34 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
               delete newProgress[file.name];
               return newProgress;
             });
+            setProgressStages((prev) => {
+              const newStages = { ...prev };
+              delete newStages[file.name];
+              return newStages;
+            });
           }, 2000);
         } catch (error) {
-          console.error("Upload failed:", error);
+          console.error("Text extraction or upload failed:", error);
           setUploadProgress((prev) => {
             const newProgress = { ...prev };
             delete newProgress[file.name];
             return newProgress;
           });
+          setProgressStages((prev) => {
+            const newStages = { ...prev };
+            delete newStages[file.name];
+            return newStages;
+          });
+
+          // Show error to user
+          alert(`Failed to process ${file.name}: ${error.message}`);
         }
       }
 
       setIsUploading(false);
       onUploadComplete?.();
     },
-    [user, courseId, generateUploadUrl, saveFile, onUploadComplete],
+    [user, courseId, saveTextFile, onUploadComplete],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -141,7 +201,7 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
           ) : (
             <div>
               <p className="text-orange-500 font-medium text-base">
-                Drop materials here...
+                Drop PDF files here...
               </p>
             </div>
           )}
@@ -152,17 +212,15 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
       {Object.keys(uploadProgress).length > 0 && (
         <div className="mt-4 space-y-2">
           {Object.entries(uploadProgress).map(([fileName, progress]) => (
-            <div key={fileName} className="p-3">
-              <div className="flex justify-between text-sm mb-1">
-                <span className="truncate">{fileName}</span>
+            <div key={fileName} className="p-3 flex flex-col gap-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="truncate font-medium">{fileName}</span>
                 <span>{progress}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                ></div>
-              </div>
+              <div
+                className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              ></div>
             </div>
           ))}
         </div>

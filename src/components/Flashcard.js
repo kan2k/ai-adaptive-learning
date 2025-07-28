@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DotPattern } from "@/components/magicui/dot-pattern";
+import { cn } from "@/lib/utils";
 
 export function Flashcard({ flashcards }) {
   const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0);
@@ -29,18 +31,23 @@ export function Flashcard({ flashcards }) {
     flashcards.length > 0 ? flashcards[currentFlashcardIndex] : null;
 
   return (
-    <div className="basis-[30%] bg-green-500 w-full rounded-l-[48px] rounded-r-[12px] p-8 text-xl">
-      <div className="w-full h-full flex flex-col items-center justify-between">
+    <div className="basis-[30%] bg-green-500 w-full rounded-l-[48px] rounded-r-[12px] p-8 text-xl relative">
+      <DotPattern
+        className={cn(
+          "[mask-image:radial-gradient(500px_circle_at_center,white,transparent)] z-0",
+        )}
+      />
+      <div className="relative z-10 w-full h-full flex flex-col items-center justify-between">
         {/* <div className="text-sm">Flash Cards</div> */}
 
         {/* Flashcard Content */}
         <div className="text-center flex-1 flex items-center justify-center px-4">
           {currentFlashcard ? (
             <div className="space-y-1 flex flex-col items-center justify-center">
-              <div className="text-lg font-bold text-white">
+              <div className="text-lg font-bold text-white text-shadow-black/50 text-shadow-xs">
                 {currentFlashcard.conceptTitle}
               </div>
-              <div className="text-base bg-white bg-opacity-20 rounded-lg px-4 py-4 mx-8 leading-5">
+              <div className="text-base bg-white bg-opacity-20 rounded-lg px-4 py-4 mx-8 shadow-lg">
                 {currentFlashcard.flashCardText}
               </div>
             </div>

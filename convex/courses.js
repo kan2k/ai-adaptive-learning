@@ -226,11 +226,12 @@ export const getSelectedFilesWithDetails = query({
     v.object({
       _id: v.id("files"),
       _creationTime: v.number(),
-      storageId: v.id("_storage"),
+      storageId: v.optional(v.id("_storage")), // Optional for text-only files
       name: v.string(),
       type: v.string(),
       size: v.number(),
       uploadedAt: v.number(),
+      textContent: v.optional(v.string()), // For extracted PDF text
       metadata: v.optional(
         v.object({
           relatedArea: v.string(),
@@ -344,7 +345,24 @@ export const startCourse = action({
 export const setStudentProgress = mutation({
   args: {
     courseId: v.id("courses"),
-    progressReport: v.string(),
+    conceptKey: v.string(),
+    updates: v.object({
+      mastery: v.optional(
+        v.union(
+          v.literal("beginner"),
+          v.literal("intermediate"),
+          v.literal("advanced"),
+        ),
+      ),
+      mistakes: v.optional(v.number()),
+      difficulty: v.optional(v.union(v.literal("easy"), v.literal("hard"))),
+      needsReview: v.optional(v.boolean()),
+      lastMistakeAt: v.optional(v.number()),
+      questionsCorrect: v.optional(v.number()),
+      questionsTotal: v.optional(v.number()),
+      percentage: v.optional(v.number()),
+      observation: v.optional(v.string()),
+    }),
   },
   returns: v.object({
     success: v.boolean(),
@@ -356,11 +374,58 @@ export const setStudentProgress = mutation({
     }
 
     const currentLearningData = course.learningData || {};
+    const currentProgress = currentLearningData.studentProgress || {};
+
+    // Get existing concept data or create new one
+    const existingConcept = currentProgress[args.conceptKey] || {
+      mastery: "beginner",
+      mistakes: 0,
+      difficulty: "easy",
+      needsReview: false,
+      questionsCorrect: 0,
+      questionsTotal: 0,
+      percentage: 0,
+      observation: "",
+    };
+
+    // Update the concept with new data, handling observation specially
+    const updatedConcept = {
+      ...existingConcept,
+      ...args.updates,
+    };
+
+    // Handle observation field - append new observations rather than replacing
+    if (args.updates.observation && args.updates.observation.trim() !== "") {
+      const currentObservation = existingConcept.observation || "";
+      const newObservation = args.updates.observation.trim();
+
+      if (currentObservation === "") {
+        updatedConcept.observation = newObservation;
+      } else {
+        // Append new observation with timestamp for context
+        const timestamp = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+        updatedConcept.observation = `${currentObservation}\n[${timestamp}] ${newObservation}`;
+      }
+    }
+
+    // Use provided percentage as tutor's confidence assessment
+    if (args.updates.percentage !== undefined) {
+      updatedConcept.percentage = Math.max(
+        0,
+        Math.min(100, args.updates.percentage),
+      );
+    }
+
+    // Update the progress object
+    const updatedProgress = {
+      ...currentProgress,
+      [args.conceptKey]: updatedConcept,
+    };
 
     await ctx.db.patch(args.courseId, {
       learningData: {
         ...currentLearningData,
-        studentProgressReport: args.progressReport,
+        studentProgress: updatedProgress,
       },
     });
 
@@ -372,12 +437,121 @@ export const getStudentProgress = query({
   args: {
     courseId: v.id("courses"),
   },
+  returns: v.record(
+    v.string(),
+    v.object({
+      mastery: v.union(
+        v.literal("beginner"),
+        v.literal("intermediate"),
+        v.literal("advanced"),
+      ),
+      mistakes: v.number(),
+      difficulty: v.union(v.literal("easy"), v.literal("hard")),
+      needsReview: v.boolean(),
+      lastMistakeAt: v.optional(v.number()),
+      questionsCorrect: v.number(),
+      questionsTotal: v.number(),
+      percentage: v.number(),
+      observation: v.string(),
+    }),
+  ),
   handler: async (ctx, args) => {
     const course = await ctx.db.get(args.courseId);
     if (!course) {
-      return "";
+      return {};
     }
-    return course.learningData?.studentProgressReport || "";
+    return course.learningData?.studentProgress || {};
+  },
+});
+
+export const initializeStudentProgress = mutation({
+  args: {
+    courseId: v.id("courses"),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    conceptsInitialized: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const courseWithFiles = await ctx.runQuery(api.courses.getCourseWithFiles, {
+      courseId: args.courseId,
+    });
+
+    if (!courseWithFiles || !courseWithFiles.files) {
+      throw new Error("Course or files not found");
+    }
+
+    const currentLearningData = courseWithFiles.learningData || {};
+    const existingProgress = currentLearningData.studentProgress || {};
+
+    // Extract all concepts from course files
+    const concepts = new Set();
+    for (const file of courseWithFiles.files) {
+      if (file.metadata && file.metadata.concepts) {
+        for (const concept of file.metadata.concepts) {
+          concepts.add(concept.title);
+        }
+      }
+    }
+
+    // Initialize progress for each concept if it doesn't exist
+    const updatedProgress = { ...existingProgress };
+    let conceptsInitialized = 0;
+
+    for (const conceptTitle of concepts) {
+      if (!updatedProgress[conceptTitle]) {
+        updatedProgress[conceptTitle] = {
+          mastery: "beginner",
+          mistakes: 0,
+          difficulty: "easy",
+          needsReview: false,
+          questionsCorrect: 0,
+          questionsTotal: 0,
+          percentage: 0,
+          observation: "",
+        };
+        conceptsInitialized++;
+      }
+    }
+
+    await ctx.db.patch(args.courseId, {
+      learningData: {
+        ...currentLearningData,
+        studentProgress: updatedProgress,
+      },
+    });
+
+    return {
+      success: true,
+      conceptsInitialized,
+    };
+  },
+});
+
+export const getAllConcepts = query({
+  args: {
+    courseId: v.id("courses"),
+  },
+  returns: v.array(v.string()),
+  handler: async (ctx, args) => {
+    const courseWithFiles = await ctx.runQuery(api.courses.getCourseWithFiles, {
+      courseId: args.courseId,
+    });
+
+    if (!courseWithFiles || !courseWithFiles.files) {
+      return [];
+    }
+
+    const concepts = new Set();
+    for (const file of courseWithFiles.files) {
+      if (file.metadata && file.metadata.concepts) {
+        for (const concept of file.metadata.concepts) {
+          concepts.add(concept.title);
+        }
+      }
+    }
+
+    return Array.from(concepts);
   },
 });
 

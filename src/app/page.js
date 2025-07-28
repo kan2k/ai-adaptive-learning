@@ -7,25 +7,18 @@ import {
   useMutation,
   useAction,
 } from "convex/react";
-import { SignIn, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+import { SignIn, useUser } from "@clerk/clerk-react";
 import { api } from "../../convex/_generated/api";
 import { useState, useEffect, useRef } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Book,
-  ChevronDownIcon,
-  ChevronLeft,
-  ChevronRight,
   Circle,
   Diamond,
-  PlusIcon,
   Square,
   Triangle,
   Lightbulb,
@@ -52,21 +45,26 @@ export default function Page() {
   const [editingName, setEditingName] = useState("");
   const [isStartingCourse, setIsStartingCourse] = useState(false);
 
-  // Local state for current question/answer flow
-  const [currentQuestion, setCurrentQuestion] = useState("");
-  const [currentQuestionRephrased, setCurrentQuestionRephrased] = useState("");
-  const [currentAnswers, setCurrentAnswers] = useState([]);
-  const [currentCorrectAnswer, setCurrentCorrectAnswer] = useState("");
-  const [currentHint, setCurrentHint] = useState("");
+  // Consolidated local learning data state
+  const [currentQuestion, setCurrentQuestion] = useState({
+    question: "",
+    questionRephrased: "",
+    difficulty: "",
+    answers: [],
+    correctAnswer: "",
+    hint: "",
+    message: "",
+  });
+
+  // UI state for answer interaction
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
-  const [isAnswerCorrect, setIsAnswerCorrect] = useState(false);
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [isLoadingNextQuestion, setIsLoadingNextQuestion] = useState(false);
-  const [currentMessage, setCurrentMessage] = useState("");
+
+  // Typing animation state
   const [displayedMessage, setDisplayedMessage] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
 
   const nameInputRef = useRef(null);
 
@@ -88,7 +86,6 @@ export default function Page() {
   // Extract individual data from learningData
   const nextQuestionData = learningData?.nextQuestion || null;
   const flashcards = learningData?.flashcards || [];
-  const studentProgressReport = learningData?.studentProgressReport || "";
 
   const selectedFiles = useQuery(
     api.courses.getSelectedFilesWithDetails,
@@ -105,8 +102,6 @@ export default function Page() {
   const hasFiles = files && files.length > 0;
   const isReadyToStart = hasFiles && allFilesHaveMetadata;
   const courseStarted = learningData?.nextQuestion && learningData?.flashcards;
-  console.log(learningData?.nextQuestion);
-  console.log(learningData?.flashcards);
 
   // Set the most recent course as default when courses load
   useEffect(() => {
@@ -124,77 +119,70 @@ export default function Page() {
   // Update local state when nextQuestionData changes (new question available)
   useEffect(() => {
     if (nextQuestionData) {
-      // Always update the message
-      if (nextQuestionData.message) {
-        setCurrentMessage(nextQuestionData.message);
-      }
-
       // Only update question/answers if we're not currently in the middle of an answer flow
       // OR if this is the first time we're getting data
       if (
         !isAnswerSubmitted ||
-        (!currentQuestion && nextQuestionData.question)
+        (!currentQuestion.question && nextQuestionData.question)
       ) {
-        if (nextQuestionData.question) {
-          setCurrentQuestion(nextQuestionData.question);
-        }
-        if (nextQuestionData.questionRephrased) {
-          setCurrentQuestionRephrased(nextQuestionData.questionRephrased);
-        }
-        if (nextQuestionData.answers) {
-          setCurrentAnswers(nextQuestionData.answers);
-        }
-        if (nextQuestionData.correctAnswer) {
-          setCurrentCorrectAnswer(nextQuestionData.correctAnswer);
-        }
-        if (nextQuestionData.hint) {
-          setCurrentHint(nextQuestionData.hint);
-        }
+        setCurrentQuestion({
+          question: nextQuestionData.question || "",
+          questionRephrased: nextQuestionData.questionRephrased || "",
+          difficulty: nextQuestionData.difficulty || "",
+          answers: nextQuestionData.answers || [],
+          correctAnswer: nextQuestionData.correctAnswer || "",
+          hint: nextQuestionData.hint || "",
+          message: nextQuestionData.message || "",
+        });
+      } else {
+        // Only update the message if we're in the middle of an answer flow
+        setCurrentQuestion((prev) => ({
+          ...prev,
+          message: nextQuestionData.message || prev.message,
+        }));
       }
     }
-  }, [nextQuestionData, isAnswerSubmitted, currentQuestion]);
+  }, [nextQuestionData, isAnswerSubmitted, currentQuestion.question]);
 
   // Reset answer states when course changes
   useEffect(() => {
     setSelectedAnswer(null);
     setIsAnswerSubmitted(false);
-    setIsAnswerCorrect(false);
     setShowHint(false);
-    setCurrentQuestion("");
-    setCurrentQuestionRephrased("");
-    setCurrentAnswers([]);
-    setCurrentCorrectAnswer("");
-    setCurrentHint("");
-    setCurrentMessage("");
+    setCurrentQuestion({
+      question: "",
+      questionRephrased: "",
+      difficulty: "",
+      answers: [],
+      correctAnswer: "",
+      hint: "",
+      message: "",
+    });
     setDisplayedMessage("");
-    setIsTyping(false);
   }, [selectedCourse]);
 
-  // Typing animation effect for currentMessage
+  // Typing animation effect for message
   useEffect(() => {
-    if (!currentMessage) {
+    if (!currentQuestion.message) {
       setDisplayedMessage("");
-      setIsTyping(false);
       return;
     }
 
     // Start typing animation
-    setIsTyping(true);
     setDisplayedMessage("");
 
     let currentIndex = 0;
     const typingInterval = setInterval(() => {
-      if (currentIndex < currentMessage.length) {
-        setDisplayedMessage(currentMessage.slice(0, currentIndex + 1));
+      if (currentIndex < currentQuestion.message.length) {
+        setDisplayedMessage(currentQuestion.message.slice(0, currentIndex + 1));
         currentIndex++;
       } else {
-        setIsTyping(false);
         clearInterval(typingInterval);
       }
     }, 30); // Adjust speed by changing this value (lower = faster)
 
     return () => clearInterval(typingInterval);
-  }, [currentMessage]);
+  }, [currentQuestion.message]);
 
   const handleStartCourse = async () => {
     if (!selectedCourse || !user?.id) {
@@ -232,12 +220,7 @@ export default function Page() {
     }
 
     setSelectedAnswer(answerIndex);
-
-    // Show immediate feedback based on current local state
-    const correct = currentCorrectAnswer === answerText;
-    setIsAnswerCorrect(correct);
     setIsAnswerSubmitted(true);
-
     setIsSubmittingAnswer(true);
 
     try {
@@ -260,53 +243,28 @@ export default function Page() {
       // Reset states on error
       setSelectedAnswer(null);
       setIsAnswerSubmitted(false);
-      setIsAnswerCorrect(false);
     } finally {
       setIsSubmittingAnswer(false);
     }
   };
 
   const handleNextQuestion = async () => {
-    // Console log the current question and answers before moving to next
-    console.log(
-      "Current Question:",
-      currentQuestionRephrased || currentQuestion,
-    );
-    console.log("Current Answers:", currentAnswers);
-    console.log("Correct Answer:", currentCorrectAnswer);
-
     setIsLoadingNextQuestion(true);
-
-    // Reset answer states
     setSelectedAnswer(null);
     setIsAnswerSubmitted(false);
-    setIsAnswerCorrect(false);
     setShowHint(false);
-
-    // Update local state with the latest nextQuestionData (which should have the new question)
     if (nextQuestionData) {
-      if (nextQuestionData.question) {
-        setCurrentQuestion(nextQuestionData.question);
-      }
-      if (nextQuestionData.questionRephrased) {
-        setCurrentQuestionRephrased(nextQuestionData.questionRephrased);
-      }
-      if (nextQuestionData.answers) {
-        setCurrentAnswers(nextQuestionData.answers);
-      }
-      if (nextQuestionData.correctAnswer) {
-        setCurrentCorrectAnswer(nextQuestionData.correctAnswer);
-      }
-      if (nextQuestionData.hint) {
-        setCurrentHint(nextQuestionData.hint);
-      }
+      setCurrentQuestion({
+        question: nextQuestionData.question || "",
+        questionRephrased: nextQuestionData.questionRephrased || "",
+        difficulty: nextQuestionData.difficulty || "",
+        answers: nextQuestionData.answers || [],
+        correctAnswer: nextQuestionData.correctAnswer || "",
+        hint: nextQuestionData.hint || "",
+        message: nextQuestionData.message || "",
+      });
     }
-
     setIsLoadingNextQuestion(false);
-  };
-
-  const handleUploadComplete = () => {
-    // Files will automatically refresh due to Convex reactivity
   };
 
   const handleStartEditing = () => {
@@ -368,7 +326,7 @@ export default function Page() {
 
     // Answer submitted - show correct/incorrect states
     const isCorrectAnswer =
-      currentCorrectAnswer === currentAnswers[answerIndex];
+      currentQuestion.correctAnswer === currentQuestion.answers[answerIndex];
     const isSelectedAnswer = selectedAnswer === answerIndex;
 
     if (isCorrectAnswer) {
@@ -396,8 +354,7 @@ export default function Page() {
             setSelectedCourse={setSelectedCourse}
           />
           <div className="flex flex-row h-full gap-4 mx-4 mb-4">
-            <div className="w-[38.2%] bg-orange-300 h-full rounded-l-[12px] rounded-r-[48px] p-8 text-xl">
-              {/* If no courses, show a message to create a course */}
+            <div className="w-[38.2%] bg-orange-300 h-full rounded-l-[12px] rounded-r-[48px] p-8 overflow-y-auto">
               {courses && courses.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center">
                   <div className="flex flex-col items-center justify-center h-full">
@@ -410,6 +367,7 @@ export default function Page() {
                   </div>
                 </div>
               )}
+
               {selectedCourse && (
                 <div className="mb-4">
                   <div className="flex flex-row gap-2 justify-between">
@@ -452,40 +410,60 @@ export default function Page() {
                       </DropdownMenu>
                     </div>
                   </div>
-                  {/* {selectedFiles && selectedFiles.length > 0 && (
-                    <div className="text-sm bg-white bg-opacity-20 rounded px-2 py-1 mt-2">
-                      <span className="font-medium">
-                        Selected Files ({selectedFiles.length}):
-                      </span>{" "}
-                      {selectedFiles.map((file, index) => (
-                        <span key={file._id}>
-                          {file.name}
-                          {index < selectedFiles.length - 1 && ", "}
-                        </span>
-                      ))}
-                    </div>
-                  )} */}
                 </div>
               )}
 
               {selectedCourse && (
-                <div className="flex flex-col h-full">
-                  {/* File Upload Section */}
-                  <div className="flex-1 min-h-0">
-                    <div className="mb-4">
-                      <UploadDropZone
-                        courseId={selectedCourse._id}
-                        onUploadComplete={handleUploadComplete}
-                      />
-                    </div>
+                <div className="flex flex-col gap-4">
+                  <div className="">
+                    <UploadDropZone courseId={selectedCourse._id} />
+                  </div>
 
-                    {/* File Viewing Section */}
-                    <div className="flex-1 min-h-0">
-                      <div className="h-64 overflow-y-auto">
-                        <UploadedFiles courseId={selectedCourse._id} />
+                  <div className="max-h-64 overflow-y-auto">
+                    <UploadedFiles courseId={selectedCourse._id} />
+                  </div>
+
+                  {learningData?.studentProgress && (
+                    <div className="max-h-64 overflow-y-auto w-full rounded-lg flex flex-col gap-2">
+                      <div className="flex flex-col divide-y">
+                        {Object.keys(learningData?.studentProgress).map(
+                          (conceptName) => (
+                            <div
+                              key={conceptName}
+                              className="flex flex-col bg-white text-black px-8 py-4 text-sm"
+                            >
+                              <div className="">{conceptName}</div>
+                              <div className="flex flex-row justify-between items-center gap-2">
+                                {learningData?.studentProgress[conceptName]
+                                  .percentage === 0 ? (
+                                  <div className="text-gray-500 text-xs italic font-light">
+                                    No progress yet
+                                  </div>
+                                ) : (
+                                  <div
+                                    className={`bg-orange-400 rounded-full h-2`}
+                                    style={{
+                                      width: `${
+                                        learningData?.studentProgress[
+                                          conceptName
+                                        ].percentage
+                                      }%`,
+                                    }}
+                                  ></div>
+                                )}
+                                <div className="capitalize text-xs bg-orange-400 text-white rounded-full px-2">
+                                  {
+                                    learningData?.studentProgress[conceptName]
+                                      .mastery
+                                  }
+                                </div>
+                              </div>
+                            </div>
+                          ),
+                        )}
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
@@ -534,16 +512,16 @@ export default function Page() {
                           alt=""
                         />
                       </div>
-                      {currentMessage && (
-                        <div className="bg-white rounded-t-[24px] rounded-br-[24px] px-4 py-3 leading-6 relative">
+                      {currentQuestion.message && (
+                        <div className="bg-white rounded-t-[24px] rounded-br-[24px] px-4 py-3 relative">
                           {displayedMessage}
                         </div>
                       )}
                     </div>
                     <div className="flex flex-col h-full justify-between">
                       <div className="h-full flex items-center justify-center text-white text-2xl text-center">
-                        {currentQuestionRephrased ||
-                          currentQuestion ||
+                        {currentQuestion.questionRephrased ||
+                          currentQuestion.question ||
                           "Loading question..."}
                       </div>
                       <div className="flex flex-col gap-2">
@@ -569,30 +547,36 @@ export default function Page() {
                           </div>
                         )}
 
-                        {/* Hint Button - shows when answer not submitted and hint exists */}
-                        {!isAnswerSubmitted && currentHint && !showHint && (
-                          <div className="mb-2 flex justify-center">
-                            <Button
-                              onClick={() => setShowHint(true)}
-                              className="bg-white text-purple-600 hover:bg-gray-100 font-bold flex items-center gap-2"
-                            >
-                              <Lightbulb className="h-5 w-5 text-yellow-500" />
-                              Show Hint
-                            </Button>
-                          </div>
-                        )}
+                        {!isAnswerSubmitted &&
+                          currentQuestion.hint &&
+                          !showHint && (
+                            <div className="mb-2 flex justify-center flex-row gap-2 items-center">
+                              {currentQuestion.difficulty && (
+                                <div className="justify-center bg-white text-purple-600 hover:bg-gray-100 font-bold flex items-center gap-1 capitalize text-sm rounded-full px-4 py-1">
+                                  {currentQuestion.difficulty} Question
+                                </div>
+                              )}
+                              <button
+                                onClick={() => setShowHint(true)}
+                                className="rounded-full text-sm px-4 py-1 bg-white text-purple-600 hover:bg-gray-100 font-bold flex items-center gap-1 flex-row"
+                              >
+                                <Lightbulb className="h-4 w-4 mb-0.5 text-yellow-500" />
+                                <div className="">Show Hint</div>
+                              </button>
+                            </div>
+                          )}
 
                         {/* Hint Display - shows when hint button is clicked */}
-                        {showHint && currentHint && (
+                        {showHint && currentQuestion.hint && (
                           <div className="mb-2 flex justify-center">
                             <div className="text-white text-center text-sm">
-                              💡{currentHint}
+                              💡{currentQuestion.hint}
                             </div>
                           </div>
                         )}
 
-                        {currentAnswers?.length === 4 ? (
-                          currentAnswers.map((answer, index) => {
+                        {currentQuestion.answers?.length === 4 ? (
+                          currentQuestion.answers.map((answer, index) => {
                             const icons = [Triangle, Diamond, Circle, Square];
                             const colors = [
                               "bg-red-500",
@@ -602,7 +586,7 @@ export default function Page() {
                             ];
                             const Icon = icons[index];
                             const isCorrectAnswer =
-                              currentCorrectAnswer === answer;
+                              currentQuestion.correctAnswer === answer;
                             const isSelectedAnswer = selectedAnswer === index;
 
                             return (
@@ -616,9 +600,7 @@ export default function Page() {
                               >
                                 <div className="flex flex-row gap-2 items-center">
                                   <Icon className="min-h-6 min-w-6" />
-                                  <div className="text-left leading-5">
-                                    {answer}
-                                  </div>
+                                  <div className="text-left">{answer}</div>
                                 </div>
 
                                 {/* Show correct/incorrect icons after submission */}

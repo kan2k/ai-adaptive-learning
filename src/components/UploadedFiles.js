@@ -68,7 +68,7 @@ export default function UploadedFiles({ courseId }) {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <tbody className=" divide-y ">
+              <tbody className="divide-y">
                 {files.map((file) => {
                   const isSelected =
                     selectedFileIds?.includes(file._id) || false;
@@ -96,7 +96,7 @@ export default function UploadedFiles({ courseId }) {
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-bold font-[Menco] text-gray-900 truncate flex flex-row gap-2">
+                            <div className="text-sm font-bold font-[Menco] text-gray-900 flex flex-row gap-2 truncate">
                               {file.name}
                               {/* {file.metadata?.relatedArea && (
                                 <span className="inline-flex items-center px-2 rounded text-xs font-medium bg-blue-100 text-blue-800">
@@ -121,19 +121,16 @@ export default function UploadedFiles({ courseId }) {
                               <div className="text-xs text-gray-500 italic"></div>
                             )}
                           </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent row click when clicking delete
+                              handleRemove(file._id);
+                            }}
+                            className="text-red-600 hover:cursor-pointer hover:bg-red-100 rounded-full p-2 hover:text-red-900 transition-colors flex items-center justify-center"
+                          >
+                            <Trash className="w-4 h-4" />
+                          </button>
                         </div>
-                      </td>
-
-                      <td className="pr-6 whitespace-nowrap">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevent row click when clicking delete
-                            handleRemove(file._id);
-                          }}
-                          className="text-red-600 hover:cursor-pointer hover:bg-red-100 rounded-full p-2 hover:text-red-900 transition-colors flex items-center justify-center"
-                        >
-                          <Trash className="w-4 h-4" />
-                        </button>
                       </td>
                     </tr>
                   );

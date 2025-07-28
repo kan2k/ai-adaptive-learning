@@ -63,31 +63,102 @@ export const addFlashcards = createTool({
 
 export const setStudentProgress = createTool({
   description:
-    "Set or update the student's learning progress report as a comprehensive string. Use this to create an initial progress template when starting a lesson, or to update progress after each student response.",
+    "Update the student's learning progress for a specific concept. This tracks mastery level, mistakes, difficulty progression, performance metrics, and long-term observations.",
   args: z.object({
     courseId: z.string().describe("The ID of the current course"),
-    progressReport: z
+    conceptKey: z
       .string()
-      .describe(
-        "A comprehensive progress report string containing all student learning data, performance patterns, concept mastery levels, mistake tracking, and recommendations",
-      ),
+      .describe("The concept name/key to update progress for"),
+    updates: z
+      .object({
+        mastery: z
+          .enum(["beginner", "intermediate", "advanced"])
+          .optional()
+          .describe("The student's mastery level for this concept"),
+        mistakes: z
+          .number()
+          .optional()
+          .describe("Number of mistakes made on this concept"),
+        difficulty: z
+          .enum(["easy", "hard"])
+          .optional()
+          .describe("Current difficulty level for questions on this concept"),
+        needsReview: z
+          .boolean()
+          .optional()
+          .describe("Whether this concept needs review/spaced repetition"),
+        lastMistakeAt: z
+          .number()
+          .optional()
+          .describe("Timestamp of the last mistake on this concept"),
+        questionsCorrect: z
+          .number()
+          .optional()
+          .describe("Number of questions answered correctly"),
+        questionsTotal: z
+          .number()
+          .optional()
+          .describe("Total number of questions asked for this concept"),
+        percentage: z
+          .number()
+          .min(0)
+          .max(100)
+          .optional()
+          .describe(
+            "Your confidence/assessment (0-100) of how likely the student is to answer correctly on this concept, based on their responses and understanding patterns",
+          ),
+        observation: z
+          .string()
+          .optional()
+          .describe(
+            "New observation about the student's learning for this concept. This will be appended to existing observations with a timestamp, creating a long-term learning journal. Use this to note patterns, breakthroughs, struggles, or insights.",
+          ),
+      })
+      .describe("Object containing the progress updates to apply"),
   }),
-  handler: async (ctx, { courseId, progressReport }) => {
+  handler: async (ctx, { courseId, conceptKey, updates }) => {
     return await ctx.runMutation(api.courses.setStudentProgress, {
       courseId,
-      progressReport,
+      conceptKey,
+      updates,
     });
   },
 });
 
 export const getStudentProgress = createTool({
   description:
-    "Get the student's current progress report as a comprehensive string containing all learning data, performance patterns, and tracking information",
+    "Get the student's current progress report as an object with concept names as keys and progress data as values",
   args: z.object({
     courseId: z.string().describe("The ID of the current course"),
   }),
   handler: async (ctx, { courseId }) => {
     return await ctx.runQuery(api.courses.getStudentProgress, {
+      courseId,
+    });
+  },
+});
+
+export const initializeStudentProgress = createTool({
+  description:
+    "Initialize student progress tracking for all concepts in the course files. This should be called when starting a new lesson.",
+  args: z.object({
+    courseId: z.string().describe("The ID of the current course"),
+  }),
+  handler: async (ctx, { courseId }) => {
+    return await ctx.runMutation(api.courses.initializeStudentProgress, {
+      courseId,
+    });
+  },
+});
+
+export const getAllConcepts = createTool({
+  description:
+    "Get all concept names from the course files to understand what concepts are available for tracking",
+  args: z.object({
+    courseId: z.string().describe("The ID of the current course"),
+  }),
+  handler: async (ctx, { courseId }) => {
+    return await ctx.runQuery(api.courses.getAllConcepts, {
       courseId,
     });
   },
@@ -111,7 +182,9 @@ export const setNextQuestion = createTool({
     difficulty: z
       .enum(["easy", "hard"])
       .describe("The difficulty level of the question"),
-    message: z.string().describe("Tutor's message or feedback to the student"),
+    message: z
+      .string()
+      .describe("A welcome message or feedback from the tutor to the student."),
   }),
   handler: async (
     ctx,
@@ -154,5 +227,7 @@ export const tutorAgentTools = {
   addFlashcards,
   getStudentProgress,
   setStudentProgress,
+  initializeStudentProgress,
+  getAllConcepts,
   setNextQuestion,
 };

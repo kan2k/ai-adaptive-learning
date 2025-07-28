@@ -44,6 +44,45 @@ export const saveFile = mutation({
   },
 });
 
+export const saveTextFile = mutation({
+  args: {
+    name: v.string(),
+    textContent: v.string(),
+    originalSize: v.number(),
+    courseId: v.id("courses"),
+  },
+  handler: async (ctx, args) => {
+    // Create the file record with text content
+    const fileId = await ctx.db.insert("files", {
+      name: args.name,
+      type: "application/pdf", // Keep original type for UI purposes
+      size: args.originalSize,
+      textContent: args.textContent, // Store extracted text
+      uploadedAt: Date.now(),
+    });
+
+    // Add the file to the course and auto-select it
+    const course = await ctx.db.get(args.courseId);
+    if (course) {
+      await ctx.db.patch(args.courseId, {
+        fileIds: [...(course.fileIds || []), fileId],
+        selectedFileIds: [...(course.selectedFileIds || []), fileId],
+      });
+    }
+
+    // Schedule metadata generation without awaiting it
+    ctx.scheduler.runAfter(
+      0,
+      internal.llm.generateMetadata.generateMetadataFromText,
+      {
+        fileId: fileId,
+      },
+    );
+
+    return fileId;
+  },
+});
+
 export const saveMetadata = mutation({
   args: {
     fileId: v.id("files"),
@@ -100,6 +139,21 @@ export const getFileUrl = query({
   handler: async (ctx, args) => {
     const file = await ctx.db.get(args.fileId);
     if (!file) throw new Error("File not found");
+
+    // For text-only files, return null (no downloadable URL)
+    if (!file.storageId) {
+      return null;
+    }
+
     return await ctx.storage.getUrl(file.storageId);
+  },
+});
+
+export const getFileById = query({
+  args: {
+    fileId: v.id("files"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.fileId);
   },
 });
