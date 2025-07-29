@@ -96,7 +96,7 @@ export default function UploadedFiles({ courseId }) {
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-bold font-[Menco] text-gray-900 flex flex-row gap-2 truncate">
+                            <div className="text-sm font-bold font-[Menco] text-gray-900 flex flex-row gap-2">
                               {file.name}
                               {/* {file.metadata?.relatedArea && (
                                 <span className="inline-flex items-center px-2 rounded text-xs font-medium bg-blue-100 text-blue-800">

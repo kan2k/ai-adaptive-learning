@@ -9,7 +9,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Book, Check, ChevronDownIcon, PlusIcon, Settings } from "lucide-react";
 import { UserButton } from "@clerk/clerk-react";
-import { PreferencesDialog } from "./PreferencesDialog";
+import { Preferences } from "./Preferences";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { X } from "lucide-react";
 
 export function Navbar({ courses, selectedCourse, setSelectedCourse }) {
   const { user } = useUser();
@@ -116,7 +125,28 @@ export function Navbar({ courses, selectedCourse, setSelectedCourse }) {
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
-          <PreferencesDialog />
+
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="bg-white px-4 w-[180px] py-1.5 rounded-full flex items-center gap-2 hover:bg-gray-50 transition-colors justify-center hover:cursor-pointer">
+                <div className="">Preferences</div>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="w-full min-w-[820px] flex flex-col">
+              <DialogHeader className="">
+                <DialogTitle className="flex flex-row gap-2 justify-between items-center">
+                  <div className="text-2xl font-bold">Study Preferences</div>
+                  <DialogClose asChild>
+                    <X
+                      className="size-6 hover:cursor-pointer hover:scale-105"
+                      onClick={() => {}}
+                    />
+                  </DialogClose>
+                </DialogTitle>
+              </DialogHeader>
+              <Preferences />
+            </DialogContent>
+          </Dialog>
         </div>
         <div className="flex flex-row rounded-full border-2 border-white">
           <UserButton />

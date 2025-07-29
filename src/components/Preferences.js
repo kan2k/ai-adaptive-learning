@@ -88,7 +88,7 @@ const getPreviewQuestion = (preferences) => {
   return previewQuestions[languageComplexity][useAnalogy][wordLength];
 };
 
-export function PreferencesDialog() {
+export function Preferences() {
   const dbPreferences = useQuery(api.users.getPreferences);
   const savePreferences = useMutation(api.users.savePreferences);
 
@@ -147,96 +147,77 @@ export function PreferencesDialog() {
     JSON.stringify(selectedPreferences) !== JSON.stringify(initialPreferences);
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <button className="bg-white px-4 w-[180px] py-1.5 rounded-full flex items-center gap-2 hover:bg-gray-50 transition-colors justify-center hover:cursor-pointer">
-          <div className="">Preferences</div>
-        </button>
-      </DialogTrigger>
-      <DialogContent className="w-full min-w-[820px] max-h-[80%] flex flex-col">
-        <DialogHeader className="">
-          <DialogTitle className="flex flex-row gap-2 justify-between items-center">
-            <div className="text-2xl font-bold">Study Preferences</div>
-            <DialogClose asChild>
-              <X
-                className="size-6 hover:cursor-pointer hover:scale-105"
-                onClick={() => {}}
-              />
-            </DialogClose>
-          </DialogTitle>
-          <DialogDescription></DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-4 font-[Menco] ">
-          <div className="flex flex-row gap-4 items-center">
-            <div className="size-17 aspect-square">
-              <Image
-                src="/Tutors/steve.png"
-                className="h-full w-full object-cover"
-                alt=""
-                width={68}
-                height={68}
-              />
+    <>
+      <div className="flex flex-col gap-4 font-[Menco] ">
+        <div className="flex flex-row gap-4 items-center">
+          <div className="size-17 aspect-square">
+            <Image
+              src="/Tutors/steve.png"
+              className="h-full w-full object-cover"
+              alt=""
+              width={68}
+              height={68}
+            />
+          </div>
+          {/* Preview Question */}
+          <div className="text-xl font-bold text-black bg-white rounded-t-[24px] rounded-br-[24px] w-full p-4 h-[68px] flex items-center">
+            (Preview) {previewQuestion}
+          </div>
+        </div>
+        {Object.entries(preferenceOptions).map(([key, options]) => (
+          <div key={key} className="flex flex-col gap-1 p-2 rounded-md">
+            <div className="text-base w-full text-center text-white">
+              {key
+                .replace(/([A-Z])/g, " $1")
+                .replace(/^./, (str) => str.toUpperCase())}
             </div>
-            {/* Preview Question */}
-            <div className="text-xl font-bold text-black bg-white rounded-t-[24px] rounded-br-[24px] w-full p-4 h-[68px] flex items-center">
-              {previewQuestion}
+            <div className="flex flex-row gap-4">
+              {Object.entries(options).map(([option, description]) => (
+                <button
+                  key={option}
+                  onClick={() => handleOptionClick(key, option)}
+                  className={`flex flex-col gap-1 w-full rounded-md p-4 items-start justify-start text-left ${
+                    selectedPreferences[key] === option
+                      ? "bg-blue-200 outline-blue-300 outline-2"
+                      : "bg-gray-100"
+                  }`}
+                >
+                  <div className="text-base font-bold flex flex-row gap-1 items-center">
+                    <div className="">{option}</div>
+                    {selectedPreferences[key] === option && (
+                      <Check className="size-3" />
+                    )}
+                  </div>
+                  <div className="text-sm">{description}</div>
+                </button>
+              ))}
             </div>
           </div>
-          {Object.entries(preferenceOptions).map(([key, options]) => (
-            <div key={key} className="flex flex-col gap-1 p-2 rounded-md">
-              <div className="text-base w-full text-center text-white">
-                {key
-                  .replace(/([A-Z])/g, " $1")
-                  .replace(/^./, (str) => str.toUpperCase())}
-              </div>
-              <div className="flex flex-row gap-4">
-                {Object.entries(options).map(([option, description]) => (
-                  <button
-                    key={option}
-                    onClick={() => handleOptionClick(key, option)}
-                    className={`flex flex-col gap-1 w-full rounded-md p-4 items-start justify-start text-left ${
-                      selectedPreferences[key] === option
-                        ? "bg-blue-200 outline-blue-300 outline-2"
-                        : "bg-gray-100"
-                    }`}
-                  >
-                    <div className="text-base font-bold flex flex-row gap-1 items-center">
-                      <div className="">{option}</div>
-                      {selectedPreferences[key] === option && (
-                        <Check className="size-3" />
-                      )}
-                    </div>
-                    <div className="text-sm">{description}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        ))}
+      </div>
 
-        <DialogFooter className="flex flex-row gap-4 items-center justify-center mt-4">
-          <button
-            onClick={handleSaveChanges}
-            disabled={!hasChanges || isSaving || showSuccess}
-            className="font-[Menco] text-lg font-bold bg-green-500 text-black rounded-md px-4 py-2 hover:cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 w-[200px]"
-          >
-            {showSuccess ? (
-              <>
-                Changes Saved <Check className="size-5" />
-              </>
-            ) : isSaving ? (
-              "Saving..."
-            ) : (
-              "Save Changes"
-            )}
-          </button>
-          {/* <DialogClose asChild>
+      <div className="flex flex-row gap-4 items-center justify-center mt-4">
+        <button
+          onClick={handleSaveChanges}
+          disabled={isSaving || showSuccess}
+          className="font-[Menco] text-lg font-bold bg-green-500 text-black rounded-md px-4 py-2 hover:cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 w-[200px]"
+        >
+          {showSuccess ? (
+            <>
+              Changes Saved <Check className="size-5" />
+            </>
+          ) : isSaving ? (
+            "Saving..."
+          ) : (
+            "Save Changes"
+          )}
+        </button>
+        {/* <DialogClose asChild>
             <div className="font-[Menco] text-lg font-bold bg-red-500 text-white rounded-md px-4 py-2 hover:cursor-pointer">
               Close
             </div>
           </DialogClose> */}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </>
   );
 }
