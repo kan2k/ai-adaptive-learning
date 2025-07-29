@@ -123,11 +123,15 @@ export default function Page() {
     }
   }, [courses, isAuthenticated, user, createCourse]);
 
-  // Check if all files have metadata generated
-  const allFilesHaveMetadata =
-    files && files.length > 0 && files.every((file) => file.metadata);
+  // Check if all files have metadata concepts
+  const allFilesHaveConcepts =
+    files &&
+    files.length > 0 &&
+    files.every(
+      (file) => file.metadata && Object.keys(file.metadata.concepts).length > 0,
+    );
   const hasFiles = files && files.length > 0;
-  const isReadyToStart = hasFiles && allFilesHaveMetadata;
+  const isReadyToStart = hasFiles && allFilesHaveConcepts;
   const courseStarted = learningData?.nextQuestion && learningData?.flashcards;
 
   // Set the most recent course as default when courses load
@@ -568,7 +572,7 @@ export default function Page() {
                     <div className="text-center  text-white text-xl text-shadow-black">
                       {!hasFiles
                         ? "Upload some files to get started"
-                        : !allFilesHaveMetadata
+                        : !allFilesHaveConcepts
                           ? "Processing files..."
                           : "Are you ready to start?"}
                     </div>

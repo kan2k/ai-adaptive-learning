@@ -120,8 +120,7 @@ const mergeConcepts = (conceptArrays, fileName) => {
   }
 
   // Limit to reasonable number of concepts
-  const maxConcepts = 12;
-  return mergedConcepts.slice(0, maxConcepts);
+  return mergedConcepts;
 };
 
 // Function to merge file metadata from multiple chunks
@@ -228,31 +227,38 @@ export const generateMetadataFromText = internalAction({
       );
       console.log(`Split into ${chunks.length} chunks for file: ${fileId}`);
 
-      // Process each chunk
-      const chunkResults = [];
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
+      // Process chunks in batches to manage concurrency
+      const CONCURRENT_BATCH_SIZE = 15;
+      const allChunkResults = [];
+
+      for (let i = 0; i < chunks.length; i += CONCURRENT_BATCH_SIZE) {
+        const batchChunks = chunks.slice(i, i + CONCURRENT_BATCH_SIZE);
         console.log(
-          `Processing chunk ${i + 1}/${chunks.length} (${chunk.text.length} chars) for file: ${fileId}`,
+          `Processing batch of ${batchChunks.length} chunks, starting from chunk #${i + 1}`,
         );
 
-        try {
-          const result = await processSingleChunk(
+        const chunkPromises = batchChunks.map((chunk, j) => {
+          const chunkIndex = i + j + 1;
+          return processSingleChunk(
             chunk.text,
             file.name,
             fileId,
-            i + 1,
+            chunkIndex,
             chunks.length,
-          );
-          chunkResults.push(result);
-        } catch (chunkError) {
-          console.error(
-            `Error processing chunk ${i + 1} for file ${fileId}:`,
-            chunkError,
-          );
-          // Continue with other chunks even if one fails
-        }
+          ).catch((chunkError) => {
+            console.error(
+              `Error processing chunk ${chunkIndex} for file ${fileId}:`,
+              chunkError,
+            );
+            return null; // Return null to avoid rejecting Promise.all
+          });
+        });
+
+        const batchResults = await Promise.all(chunkPromises);
+        allChunkResults.push(...batchResults);
       }
+
+      const chunkResults = allChunkResults.filter((result) => result !== null);
 
       if (chunkResults.length === 0) {
         throw new Error("All chunks failed to process");

@@ -223,6 +223,11 @@ export const startCourse = internalAction({
 
     const materials = [];
     for (const file of courseWithFiles.files) {
+      if (file.metadata.description.includes("Processing")) {
+        throw new Error(
+          "Please wait for the file to be processed before starting the course",
+        );
+      }
       if (file.metadata && file.metadata.concepts) {
         materials.push(`--- material: ${file.name}, fileId:${file._id} ---`);
         for (const concept of file.metadata.concepts) {
