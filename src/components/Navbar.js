@@ -20,9 +20,13 @@ import {
 } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 
-export function Navbar({ courses, selectedCourse, setSelectedCourse }) {
+export function Navbar({
+  courses,
+  selectedCourse,
+  setSelectedCourse,
+  createCourse,
+}) {
   const { user } = useUser();
-  const createCourse = useMutation(api.courses.createCourse);
   const updateLastOpened = useMutation(api.courses.updateLastOpened);
 
   const handleCreateCourse = async () => {
@@ -45,7 +49,7 @@ export function Navbar({ courses, selectedCourse, setSelectedCourse }) {
         fileIds: [],
         selectedFileIds: [],
       };
-      updateLastOpened({ courseId, userId: user.id });
+      await updateLastOpened({ courseId, userId: user.id });
       setSelectedCourse(newCourse);
 
       console.log("Course created and selected:", courseId);
@@ -54,8 +58,8 @@ export function Navbar({ courses, selectedCourse, setSelectedCourse }) {
     }
   };
 
-  const handleCourseSelect = (course) => {
-    updateLastOpened({ courseId: course._id, userId: user.id });
+  const handleCourseSelect = async (course) => {
+    await updateLastOpened({ courseId: course._id, userId: user.id });
     setSelectedCourse(course);
   };
 

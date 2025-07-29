@@ -93,6 +93,7 @@ export const setStudentProgress = createTool({
           .describe("Whether this concept needs review/spaced repetition"),
         lastMistakeAt: z
           .number()
+          .nullable()
           .optional()
           .describe("Timestamp of the last mistake on this concept"),
         questionsCorrect: z

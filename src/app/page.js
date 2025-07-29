@@ -102,9 +102,26 @@ export default function Page() {
     selectedCourse?._id ? { courseId: selectedCourse._id } : "skip",
   );
 
+  const createCourse = useMutation(api.courses.createCourse);
   const updateCourseName = useMutation(api.courses.updateCourseName);
   const startCourse = useAction(api.courses.startCourse);
   const answerQuestion = useAction(api.llm.tutorAgent.agent.answerQuestion);
+
+  useEffect(() => {
+    // If the user is authenticated, has no courses, and the query has loaded
+    if (isAuthenticated && courses && courses.length === 0) {
+      const createInitialCourse = async () => {
+        try {
+          await createCourse({ createdBy: user.id });
+          // The course list will automatically update via the query,
+          // and the other useEffect will select it.
+        } catch (error) {
+          console.error("Failed to create initial course:", error);
+        }
+      };
+      createInitialCourse();
+    }
+  }, [courses, isAuthenticated, user, createCourse]);
 
   // Check if all files have metadata generated
   const allFilesHaveMetadata =
@@ -412,18 +429,21 @@ export default function Page() {
               courses={courses}
               selectedCourse={selectedCourse}
               setSelectedCourse={setSelectedCourse}
+              createCourse={createCourse}
             />
             <div className="flex flex-row flex-1 gap-4 mx-4 mb-4 min-h-0">
               <div className="w-[38.2%] bg-orange-300 h-full rounded-l-[12px] rounded-r-[48px] p-8 overflow-y-auto">
+                {courses === undefined && (
+                  // Loading state
+                  <div className="flex justify-center items-center h-full">
+                    <Spinner size="lg" />
+                  </div>
+                )}
+
                 {courses && courses.length === 0 && (
                   <div className="h-full flex flex-col items-center justify-center">
-                    <div className="flex flex-col items-center justify-center h-full">
-                      <div className="font-bold text-xl">
-                        🤔 Looking kind of empty here...
-                      </div>
-                      <div className="text-base">
-                        Get started by creating a course
-                      </div>
+                    <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
+                      <Spinner size="lg" />
                     </div>
                   </div>
                 )}
