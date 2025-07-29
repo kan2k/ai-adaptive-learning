@@ -14,14 +14,21 @@ export default defineSchema({
       v.object({
         nextQuestion: v.optional(
           v.object({
-            question: v.string(),
-            questionRephrased: v.string(),
-            answers: v.array(v.string()),
-            correctAnswer: v.string(),
-            hint: v.string(),
-            concept: v.string(),
-            difficulty: v.string(), // "easy" or "hard"
-            message: v.string(), // Tutor's message/feedback
+            originalQuestion: v.object({
+              question: v.string(),
+              answers: v.array(v.string()),
+              correctAnswer: v.string(),
+            }),
+            enhancedQuestion: v.object({
+              question: v.string(),
+              questionRephrased: v.string(),
+              answers: v.array(v.string()),
+              correctAnswer: v.string(),
+              hint: v.string(),
+              conceptCovered: v.string(),
+              difficulty: v.string(),
+            }),
+            message: v.string(),
             createdAt: v.number(),
           }),
         ),
@@ -87,4 +94,30 @@ export default defineSchema({
       }),
     ),
   }),
+
+  users: defineTable({
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    profileUrl: v.optional(v.string()),
+    tokenIdentifier: v.string(),
+    preferences: v.optional(
+      v.object({
+        languageComplexity: v.union(
+          v.literal("Primary"),
+          v.literal("High School"),
+          v.literal("University"),
+        ),
+        analogyUsage: v.union(
+          v.literal("Frequent"),
+          v.literal("Occasional"),
+          v.literal("Limited"),
+        ),
+        wordLength: v.union(
+          v.literal("Short"),
+          v.literal("Medium"),
+          v.literal("Long"),
+        ),
+      }),
+    ),
+  }).index("by_token", ["tokenIdentifier"]),
 });

@@ -581,13 +581,20 @@ export const getConceptsNeedingReview = query({
 export const setNextQuestion = mutation({
   args: {
     courseId: v.id("courses"),
-    question: v.string(),
-    questionRephrased: v.string(),
-    answers: v.array(v.string()),
-    correctAnswer: v.string(),
-    hint: v.string(),
-    concept: v.string(),
-    difficulty: v.string(),
+    originalQuestion: v.object({
+      question: v.string(),
+      answers: v.array(v.string()),
+      correctAnswer: v.string(),
+    }),
+    enhancedQuestion: v.object({
+      question: v.string(),
+      questionRephrased: v.string(),
+      answers: v.array(v.string()),
+      correctAnswer: v.string(),
+      hint: v.string(),
+      conceptCovered: v.string(),
+      difficulty: v.string(),
+    }),
     message: v.string(),
   },
   returns: v.null(),
@@ -598,13 +605,8 @@ export const setNextQuestion = mutation({
     }
 
     const nextQuestion = {
-      question: args.question,
-      questionRephrased: args.questionRephrased,
-      answers: args.answers,
-      correctAnswer: args.correctAnswer,
-      hint: args.hint,
-      concept: args.concept,
-      difficulty: args.difficulty,
+      originalQuestion: args.originalQuestion,
+      enhancedQuestion: args.enhancedQuestion,
       message: args.message,
       createdAt: Date.now(),
     };
@@ -631,7 +633,18 @@ export const getLearningData = query({
     if (!course) {
       return null;
     }
-    return course.learningData || null;
+    const learningData = course.learningData || {};
+    const flashcards = await ctx.runQuery(
+      api.flashcards.getFlashcardsByCourse,
+      {
+        courseId: args.courseId,
+      },
+    );
+    return {
+      nextQuestion: learningData.nextQuestion || null,
+      studentProgress: learningData.studentProgress || {},
+      flashcards: flashcards || [],
+    };
   },
 });
 
@@ -641,13 +654,20 @@ export const getNextQuestion = query({
   },
   returns: v.union(
     v.object({
-      question: v.string(),
-      questionRephrased: v.string(),
-      answers: v.array(v.string()),
-      correctAnswer: v.string(),
-      hint: v.string(),
-      concept: v.string(),
-      difficulty: v.string(),
+      originalQuestion: v.object({
+        question: v.string(),
+        answers: v.array(v.string()),
+        correctAnswer: v.string(),
+      }),
+      enhancedQuestion: v.object({
+        question: v.string(),
+        questionRephrased: v.string(),
+        answers: v.array(v.string()),
+        correctAnswer: v.string(),
+        hint: v.string(),
+        conceptCovered: v.string(),
+        difficulty: v.string(),
+      }),
       message: v.string(),
       createdAt: v.number(),
     }),

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Book, Check, ChevronDownIcon, PlusIcon, Settings } from "lucide-react";
 import { UserButton } from "@clerk/clerk-react";
+import { PreferencesDialog } from "./PreferencesDialog";
 
 export function Navbar({ courses, selectedCourse, setSelectedCourse }) {
   const { user } = useUser();
@@ -50,7 +51,7 @@ export function Navbar({ courses, selectedCourse, setSelectedCourse }) {
   };
 
   return (
-    <div className="bg-blue-500 border-blue-400 border-b-2 rounded-b-[48px] h-16 flex flex-row items-center text-2xl font-bold">
+    <div className="bg-blue-500 outline-blue-400 outline-4 rounded-b-[48px] h-16 flex flex-row items-center text-2xl font-bold">
       <div className="h-full w-full flex flex-row items-center justify-between px-8">
         <div className="flex flex-row items-center gap-8">
           <Book className="h-6 w-6 text-white" />
@@ -115,9 +116,7 @@ export function Navbar({ courses, selectedCourse, setSelectedCourse }) {
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
-          <button className="bg-white px-4 w-[180px] py-1.5 rounded-full flex items-center gap-2 hover:bg-gray-50 transition-colors justify-center hover:cursor-pointer">
-            <div className="">Preferences</div>
-          </button>
+          <PreferencesDialog />
         </div>
         <div className="flex flex-row rounded-full border-2 border-white">
           <UserButton />

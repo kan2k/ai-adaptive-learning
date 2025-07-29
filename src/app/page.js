@@ -37,6 +37,7 @@ import { StripBackground } from "@/components/StripBackground";
 import { shadesOfPurple } from "@clerk/themes";
 import { Navbar } from "@/components/Navbar";
 import { Flashcard } from "@/components/Flashcard";
+import Image from "next/image";
 
 export default function Page() {
   const { user } = useUser();
@@ -44,6 +45,7 @@ export default function Page() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState("");
   const [isStartingCourse, setIsStartingCourse] = useState(false);
+  const [questionStyle, setQuestionStyle] = useState("enhanced"); // 'original' or 'enhanced'
 
   // Consolidated local learning data state
   const [currentQuestion, setCurrentQuestion] = useState({
@@ -118,20 +120,38 @@ export default function Page() {
 
   // Update local state when nextQuestionData changes (new question available)
   useEffect(() => {
-    if (nextQuestionData) {
+    if (
+      nextQuestionData &&
+      nextQuestionData.originalQuestion &&
+      nextQuestionData.enhancedQuestion
+    ) {
+      const questionData =
+        questionStyle === "original"
+          ? nextQuestionData.originalQuestion
+          : nextQuestionData.enhancedQuestion;
+
       // Only update question/answers if we're not currently in the middle of an answer flow
       // OR if this is the first time we're getting data
       if (
         !isAnswerSubmitted ||
-        (!currentQuestion.question && nextQuestionData.question)
+        (!currentQuestion.question && questionData.question)
       ) {
         setCurrentQuestion({
-          question: nextQuestionData.question || "",
-          questionRephrased: nextQuestionData.questionRephrased || "",
-          difficulty: nextQuestionData.difficulty || "",
-          answers: nextQuestionData.answers || [],
-          correctAnswer: nextQuestionData.correctAnswer || "",
-          hint: nextQuestionData.hint || "",
+          question: questionData.question || "",
+          questionRephrased:
+            questionStyle === "enhanced"
+              ? nextQuestionData.enhancedQuestion.questionRephrased || ""
+              : "",
+          difficulty:
+            questionStyle === "enhanced"
+              ? nextQuestionData.enhancedQuestion.difficulty || ""
+              : "",
+          answers: questionData.answers || [],
+          correctAnswer: questionData.correctAnswer || "",
+          hint:
+            questionStyle === "enhanced"
+              ? nextQuestionData.enhancedQuestion.hint || ""
+              : "",
           message: nextQuestionData.message || "",
         });
       } else {
@@ -142,7 +162,12 @@ export default function Page() {
         }));
       }
     }
-  }, [nextQuestionData, isAnswerSubmitted, currentQuestion.question]);
+  }, [
+    nextQuestionData,
+    isAnswerSubmitted,
+    currentQuestion.question,
+    questionStyle,
+  ]);
 
   // Reset answer states when course changes
   useEffect(() => {
@@ -159,6 +184,7 @@ export default function Page() {
       message: "",
     });
     setDisplayedMessage("");
+    setQuestionStyle("enhanced");
   }, [selectedCourse]);
 
   // Typing animation effect for message
@@ -253,14 +279,32 @@ export default function Page() {
     setSelectedAnswer(null);
     setIsAnswerSubmitted(false);
     setShowHint(false);
-    if (nextQuestionData) {
+    if (
+      nextQuestionData &&
+      nextQuestionData.originalQuestion &&
+      nextQuestionData.enhancedQuestion
+    ) {
+      const questionData =
+        questionStyle === "original"
+          ? nextQuestionData.originalQuestion
+          : nextQuestionData.enhancedQuestion;
+
       setCurrentQuestion({
-        question: nextQuestionData.question || "",
-        questionRephrased: nextQuestionData.questionRephrased || "",
-        difficulty: nextQuestionData.difficulty || "",
-        answers: nextQuestionData.answers || [],
-        correctAnswer: nextQuestionData.correctAnswer || "",
-        hint: nextQuestionData.hint || "",
+        question: questionData.question || "",
+        questionRephrased:
+          questionStyle === "enhanced"
+            ? nextQuestionData.enhancedQuestion.questionRephrased || ""
+            : "",
+        difficulty:
+          questionStyle === "enhanced"
+            ? nextQuestionData.enhancedQuestion.difficulty || ""
+            : "",
+        answers: questionData.answers || [],
+        correctAnswer: questionData.correctAnswer || "",
+        hint:
+          questionStyle === "enhanced"
+            ? nextQuestionData.enhancedQuestion.hint || ""
+            : "",
         message: nextQuestionData.message || "",
       });
     }
@@ -343,17 +387,15 @@ export default function Page() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-yellow-300 font-[Menco]">
-      {/* Yellow strip background with diagonal lines */}
       <StripBackground />
-
       <Authenticated>
-        <div className="z-10 relative flex flex-col h-full w-full font-bold gap-4">
+        <div className="z-10 relative flex flex-col h-full w-full font-bold gap-5">
           <Navbar
             courses={courses}
             selectedCourse={selectedCourse}
             setSelectedCourse={setSelectedCourse}
           />
-          <div className="flex flex-row h-full gap-4 mx-4 mb-4">
+          <div className="flex flex-row flex-1 gap-4 mx-4 mb-4 min-h-0">
             <div className="w-[38.2%] bg-orange-300 h-full rounded-l-[12px] rounded-r-[48px] p-8 overflow-y-auto">
               {courses && courses.length === 0 && (
                 <div className="h-full flex flex-col items-center justify-center">
@@ -392,7 +434,7 @@ export default function Page() {
                     )}
                     <div className="h-full pt-2">
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="h-full flex items-center">
+                        <DropdownMenuTrigger className="h-full flex items-center hover:cursor-pointer">
                           <MoreVertical className="h-5 w-5" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="p-2 font-[Menco]">
@@ -419,20 +461,30 @@ export default function Page() {
                     <UploadDropZone courseId={selectedCourse._id} />
                   </div>
 
-                  <div className="max-h-64 overflow-y-auto">
+                  <div className="overflow-y-auto">
                     <UploadedFiles courseId={selectedCourse._id} />
                   </div>
 
                   {learningData?.studentProgress && (
-                    <div className="max-h-64 overflow-y-auto w-full rounded-lg flex flex-col gap-2">
+                    <div className="overflow-y-auto w-full rounded-lg flex flex-col gap-2">
                       <div className="flex flex-col divide-y">
                         {Object.keys(learningData?.studentProgress).map(
-                          (conceptName) => (
+                          (conceptName, index) => (
                             <div
                               key={conceptName}
-                              className="flex flex-col bg-white text-black px-8 py-4 text-sm"
+                              className="flex flex-col bg-white text-black p-4 gap-2 text-sm"
                             >
-                              <div className="">{conceptName}</div>
+                              <div className="flex flex-row justify-between items-center">
+                                <div className="">
+                                  {index + 1}. {conceptName}
+                                </div>
+                                <div className="capitalize text-xs bg-orange-400 text-white rounded-full px-2">
+                                  {
+                                    learningData?.studentProgress[conceptName]
+                                      .mastery
+                                  }
+                                </div>
+                              </div>
                               <div className="flex flex-row justify-between items-center gap-2">
                                 {learningData?.studentProgress[conceptName]
                                   .percentage === 0 ? (
@@ -451,12 +503,6 @@ export default function Page() {
                                     }}
                                   ></div>
                                 )}
-                                <div className="capitalize text-xs bg-orange-400 text-white rounded-full px-2">
-                                  {
-                                    learningData?.studentProgress[conceptName]
-                                      .mastery
-                                  }
-                                </div>
                               </div>
                             </div>
                           ),
@@ -505,24 +551,28 @@ export default function Page() {
                 <div className="basis-[70%] bg-purple-500 border-purple-400 w-full rounded-l-[48px] rounded-r-[12px] p-8 text-xl">
                   <div className="flex flex-col h-full gap-4">
                     <div className="flex flex-row gap-4">
-                      <div className="h-16 min-w-16 aspect-square bg-black self-end">
-                        <img
+                      <div className="size-17 aspect-square bg-black self-end">
+                        <Image
                           src="/Tutors/steve.png"
                           className="h-full w-full object-cover"
                           alt=""
+                          width={68}
+                          height={68}
                         />
                       </div>
                       {currentQuestion.message && (
-                        <div className="bg-white rounded-t-[24px] rounded-br-[24px] px-4 py-3 relative">
+                        <div className="bg-white rounded-t-[24px] rounded-br-[24px] px-4 py-3 relative min-h-[68px] flex items-center">
                           {displayedMessage}
                         </div>
                       )}
                     </div>
                     <div className="flex flex-col h-full justify-between">
-                      <div className="h-full flex items-center justify-center text-white text-2xl text-center">
-                        {currentQuestion.questionRephrased ||
-                          currentQuestion.question ||
-                          "Loading question..."}
+                      <div className="h-full flex flex-col items-center justify-center text-white text-2xl text-center gap-4">
+                        <div className="flex items-center justify-center leading-7 w-[80%]">
+                          {currentQuestion.questionRephrased ||
+                            currentQuestion.question ||
+                            "Loading question..."}
+                        </div>
                       </div>
                       <div className="flex flex-col gap-2">
                         {/* Next Question Button - shows after answer is submitted */}
@@ -547,33 +597,64 @@ export default function Page() {
                           </div>
                         )}
 
-                        {!isAnswerSubmitted &&
-                          currentQuestion.hint &&
-                          !showHint && (
-                            <div className="mb-2 flex justify-center flex-row gap-2 items-center">
-                              {currentQuestion.difficulty && (
-                                <div className="justify-center bg-white text-purple-600 hover:bg-gray-100 font-bold flex items-center gap-1 capitalize text-sm rounded-full px-4 py-1">
-                                  {currentQuestion.difficulty} Question
+                        {!isAnswerSubmitted && (
+                          <div className="mb-2 flex justify-center flex-row gap-2 items-center">
+                            {currentQuestion?.difficulty && (
+                              <div className="justify-center bg-white text-purple-600 hover:bg-gray-100 font-bold flex items-center gap-1 capitalize text-sm rounded-full px-4 py-1">
+                                {currentQuestion.difficulty}
+                              </div>
+                            )}
+                            {nextQuestionData?.originalQuestion && (
+                              <div className="flex items-center justify-center text-sm font-normal">
+                                <button
+                                  onClick={() => setQuestionStyle("enhanced")}
+                                  className={`px-3 py-1 rounded-l-full font-bold font-[Menco] ${
+                                    questionStyle === "enhanced"
+                                      ? "bg-white text-purple-600"
+                                      : "bg-purple-400 text-white"
+                                  }`}
+                                >
+                                  Enhanced
+                                </button>
+                                <button
+                                  onClick={() => setQuestionStyle("original")}
+                                  className={`px-3 py-1 rounded-r-full font-bold font-[Menco] ${
+                                    questionStyle === "original"
+                                      ? "bg-white text-purple-600"
+                                      : "bg-purple-400 text-white"
+                                  }`}
+                                >
+                                  Original
+                                </button>
+                              </div>
+                            )}
+                            {!isAnswerSubmitted &&
+                              currentQuestion.hint &&
+                              !showHint &&
+                              questionStyle === "enhanced" && (
+                                <div className="flex justify-center flex-row gap-2 items-center">
+                                  <button
+                                    onClick={() => setShowHint(true)}
+                                    className="rounded-full text-sm px-4 py-1 bg-white text-purple-600 hover:bg-gray-100 font-bold flex items-center gap-1 flex-row"
+                                  >
+                                    <Lightbulb className="h-4 w-4 mb-0.5 text-yellow-500" />
+                                    <div className="">Show Hint</div>
+                                  </button>
                                 </div>
                               )}
-                              <button
-                                onClick={() => setShowHint(true)}
-                                className="rounded-full text-sm px-4 py-1 bg-white text-purple-600 hover:bg-gray-100 font-bold flex items-center gap-1 flex-row"
-                              >
-                                <Lightbulb className="h-4 w-4 mb-0.5 text-yellow-500" />
-                                <div className="">Show Hint</div>
-                              </button>
-                            </div>
-                          )}
-
-                        {/* Hint Display - shows when hint button is clicked */}
-                        {showHint && currentQuestion.hint && (
-                          <div className="mb-2 flex justify-center">
-                            <div className="text-white text-center text-sm">
-                              💡{currentQuestion.hint}
-                            </div>
                           </div>
                         )}
+
+                        {/* Hint Display - shows when hint button is clicked */}
+                        {showHint &&
+                          currentQuestion.hint &&
+                          questionStyle === "enhanced" && (
+                            <div className="mb-2 flex justify-center">
+                              <div className="text-white text-center text-sm">
+                                💡{currentQuestion.hint}
+                              </div>
+                            </div>
+                          )}
 
                         {currentQuestion.answers?.length === 4 ? (
                           currentQuestion.answers.map((answer, index) => {

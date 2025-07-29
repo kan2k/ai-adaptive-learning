@@ -8,56 +8,40 @@ const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-// Add a flashcard to a course
-export const addFlashcard = mutation({
+export const addFlashcards = mutation({
   args: {
     courseId: v.id("courses"),
-    conceptTitle: v.string(),
-    relatedArea: v.string(),
-    suggestionImage: v.string(),
-    flashCardText: v.string(),
-    sourceFileId: v.optional(v.id("files")),
-    generationType: v.string(), // "pre-generated" or "struggle-based"
+    flashcards: v.array(
+      v.object({
+        conceptTitle: v.string(),
+        relatedArea: v.string(),
+        suggestionImage: v.string(),
+        flashCardText: v.string(),
+        sourceFileId: v.optional(v.id("files")),
+        generationType: v.string(),
+      }),
+    ),
   },
-  returns: v.object({
-    success: v.boolean(),
-    flashcard: v.object({
-      conceptTitle: v.string(),
-      relatedArea: v.string(),
-      suggestionImage: v.string(),
-      flashCardText: v.string(),
-      generationType: v.string(),
-      createdAt: v.number(),
-    }),
-  }),
-  handler: async (ctx, args) => {
-    const course = await ctx.db.get(args.courseId);
+  handler: async (ctx, { courseId, flashcards }) => {
+    const course = await ctx.db.get(courseId);
     if (!course) throw new Error("Course not found");
 
-    const newFlashcard = {
-      conceptTitle: args.conceptTitle,
-      relatedArea: args.relatedArea,
-      suggestionImage: args.suggestionImage,
-      flashCardText: args.flashCardText,
-      sourceFileId: args.sourceFileId,
+    const newFlashcards = flashcards.map((f) => ({
+      ...f,
       createdAt: Date.now(),
-      generationType: args.generationType,
-    };
+    }));
 
     const currentLearningData = course.learningData || {};
     const existingFlashcards = currentLearningData.flashcards || [];
 
-    await ctx.db.patch(args.courseId, {
+    await ctx.db.patch(courseId, {
       learningData: {
         ...currentLearningData,
-        flashcards: [...existingFlashcards, newFlashcard],
+        flashcards: [...existingFlashcards, ...newFlashcards],
       },
     });
 
-    return {
-      success: true,
-      flashcard: newFlashcard,
-    };
+    return { success: true, count: newFlashcards.length };
   },
 });
 

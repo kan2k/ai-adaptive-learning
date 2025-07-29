@@ -15,6 +15,7 @@ import type * as llm_generateMetadata from "../llm/generateMetadata.js";
 import type * as llm_providers from "../llm/providers.js";
 import type * as llm_tutorAgent_agent from "../llm/tutorAgent/agent.js";
 import type * as llm_tutorAgent_tools from "../llm/tutorAgent/tools.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   "llm/providers": typeof llm_providers;
   "llm/tutorAgent/agent": typeof llm_tutorAgent_agent;
   "llm/tutorAgent/tools": typeof llm_tutorAgent_tools;
+  users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 

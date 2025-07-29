@@ -41,8 +41,33 @@ HARD questions should:
 - Have subtle distinctions between answer choices
 </question_difficulty_levels>
 
+<question_style_guidelines>
+You MUST tailor one of the questions you generate based on the student's learning preferences, which will be provided in the input.
+
+Here are the definitions for each preference option:
+
+**Language Complexity:**
+- **Primary:** Use simple words, short sentences, and minimal jargon.
+- **High School:** Use moderate vocabulary, compound sentences, and some subject-specific terms.
+- **University:** Use academic language and subject-specific terminology.
+
+**Analogy Usage:**
+- **Frequent/Occasional:** Concepts should often be explained using relatable analogies or metaphors to aid understanding.
+- **Limited:** Be direct and literal, focusing on definitions and formal logic rather than metaphor.
+
+**Word Length:**
+- **Short:** Use single-syllable or short words and brief sentences; prioritize clarity and readability.
+- **Medium:** Use a mix of common and moderately long words; sentences should be concise but allow for depth.
+- **Long:** Use subject-specific vocabulary; appropriate for advanced comprehension and precise meaning.
+</question_style_guidelines>
+
 <question_and_answer_and_hint_generation>
-- Reference student's selected materials, generate a multiple choice question, a re-phrased version of the question, 1 correct answer and 3 wrong answers
+- For each turn, you will generate TWO versions of a multiple-choice question set based on a specific concept from the provided materials.
+- Each set must include: the question, 1 correct answer, and 3 plausible incorrect answers.
+- The two versions are:
+  1.  **Original Question Set:** A standard, neutral question. Assume a high-school level of understanding with medium word length and occasional analogies. This serves as a baseline.
+  2.  **Preference-Enhanced Question Set:** This version MUST be tailored to the student's \`user_preferences\` provided in the input. You must strictly follow the \`question_style_guidelines\`. You should also generate a re-phrased version of the question and a hint for this set.
+- The final output of your turn must be a single JSON object containing both question sets and any other required information.
 - NEVER generate question thats not in selected materials provided by the student
 - The question should be about a specific concept from the course materials that student has selected.
 - Check student progress using getStudentProgress tool to get the current progress object for all concepts
@@ -65,7 +90,6 @@ To avoid student finding patterns in correct answer generation, follow these rul
 
 <flashcard_and_student_progress_initialization>
 - When starting a new lesson (context type is start_lesson), use addFlashcards tool to add flashcards for all course concepts, at least 1 flashcard per concept, use more flashcards if concept is complex or lengthy
-- When starting a new lesson (context type is start_lesson), use initializeStudentProgress tool to automatically set up progress tracking for all concepts found in the course files
 </flashcard_and_student_progress_initialization>
 
 <flashcard_generation>
@@ -77,8 +101,7 @@ To avoid student finding patterns in correct answer generation, follow these rul
 </flashcard_generation>
 
 <student_progress_tracking>
-- When starting a new lesson, use initializeStudentProgress tool to automatically set up progress tracking for all concepts
-- ALWAYS use setStudentProgress tool to update specific concept progress after each student response
+- ALWAYS use setStudentProgress tool to update specific concept progress after each student answer a question, DO NOT call setStudentProgress when starting a new lesson (when context type is start_lesson)
 - Use getStudentProgress tool to retrieve the current progress object with all concepts
 - The progress object tracks for each concept:
   * mastery: "beginner" | "intermediate" | "advanced"
@@ -116,10 +139,37 @@ To avoid student finding patterns in correct answer generation, follow these rul
     "type": "string - 'start_lesson' or 'continue_lesson'",
     "current_datetime": "ISO 8601 string",
     "selected_materials": ["array of material IDs or concepts"],
+    "user_preferences": {
+        "languageComplexity": "string - 'Primary', 'High School', or 'University'",
+        "analogyUsage": "string - 'Frequent', 'Occasional', or 'Limited'",
+        "wordLength": "string - 'Short', 'Medium', or 'Long'"
+    }
   },
   "student_response": "string - student's answer to previous question"
 }
 </input_details>
+
+<output_format>
+Your final response MUST be a single JSON object with the following structure:
+{
+  "message": "A friendly, encouraging message for the student.",
+  "originalQuestion": {
+    "question": "The baseline question text.",
+    "answers": ["Array of 4 answer choices."],
+    "correctAnswer": "The correct answer text."
+  },
+  "enhancedQuestion": {
+    "question": "The preference-enhanced question text.",
+    "questionRephrased": "A rephrased version of the enhanced question.",
+    "answers": ["Array of 4 answer choices for the enhanced question."],
+    "correctAnswer": "The correct answer for the enhanced question.",
+    "hint": "A hint for the enhanced question.",
+    "conceptCovered": "The concept this question is about.",
+    "difficulty": "'EASY' or 'HARD'"
+  },
+  "studentProgress": { ... } // The student progress object.
+}
+</output_format>
 
 <tool_use>
 - ALWAYS use tools before generating a question
@@ -181,6 +231,11 @@ export const startCourse = internalAction({
       }
     }
 
+    console.log("[Materials]", materials);
+
+    // Initialize student progress before starting the agent
+    await ctx.runMutation(api.courses.initializeStudentProgress, { courseId });
+
     const tutorAgent = getTutorAgent(courseId, materials);
     const { thread } = await tutorAgent.createThread(ctx, {
       userId: courseWithFiles.createdBy,
@@ -193,21 +248,40 @@ export const startCourse = internalAction({
     if (selectedFiles.length === 0)
       throw new Error("No files selected for course");
 
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.runQuery(
+      internal.users.internalGetUserByTokenIdentifier,
+      {
+        tokenIdentifier: identity.tokenIdentifier,
+      },
+    );
+
     const inputData = {
       context: {
         type: "start_lesson",
         currentDateTime: new Date().toISOString(),
         selectedMaterials: selectedFiles,
+        user_preferences: user?.preferences,
       },
       studentResponse: "",
     };
 
+    const prompt = JSON.stringify(inputData, null, 2);
+
+    console.log("[Prompt]", prompt);
+
     const result = await thread.generateText({
-      prompt: `The student is starting a new lesson. Please run tools proactively to initalize necessary information (next question, answers, hint, student progress, flashcards and a message) for the student. Command: start_lesson. The student has selected the following materials with file ids: ${JSON.stringify(
-        selectedFiles,
-      )}`,
-      onStepFinish: async (result) => {
-        console.log(result);
+      prompt: prompt,
+      onStepFinish: async ({ text, toolCalls, toolResults }) => {
+        if (toolCalls && toolCalls.length > 0) {
+          console.log("[Step Finish - Tool Calls]", toolCalls);
+        } else {
+          console.log("[Step Finish]", text, toolResults);
+        }
       },
     });
 
@@ -240,6 +314,18 @@ export const answerQuestion = action({
     });
     if (!courseWithFiles) throw new Error("Course not found");
 
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.runQuery(
+      internal.users.internalGetUserByTokenIdentifier,
+      {
+        tokenIdentifier: identity.tokenIdentifier,
+      },
+    );
+
     // get materials for all course files
     const materials = [];
     for (const file of courseWithFiles.files) {
@@ -266,6 +352,7 @@ export const answerQuestion = action({
         type: "continue_lesson",
         currentDateTime: new Date().toISOString(),
         selectedMaterials: selectedFiles.map((f) => f.name),
+        user_preferences: user?.preferences,
       },
       studentResponse: answer,
     };
@@ -289,56 +376,6 @@ export const answerQuestion = action({
       success: true,
       message: "Answer processed and next question prepared",
     };
-  },
-});
-
-export const getLatestThreadMessage = query({
-  args: {
-    threadId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const messageResult = await ctx.runQuery(
-      components.agent.messages.listMessagesByThreadId,
-      {
-        threadId: args.threadId,
-        order: "desc", // Get newest messages first
-      },
-    );
-
-    if (
-      !messageResult ||
-      !messageResult.page ||
-      messageResult.page.length === 0
-    ) {
-      return null;
-    }
-
-    const messages = messageResult.page;
-    const assistantMessages = messages
-      .filter((msg) => msg.message?.role === "assistant")
-      .sort((a, b) => b.order - a.order);
-    const latestMessage = assistantMessages[0];
-
-    if (!latestMessage || !latestMessage.text) {
-      return null;
-    }
-
-    try {
-      const messageData = JSON.parse(latestMessage.text);
-      return {
-        message: messageData.message || latestMessage.text,
-        nextQuestion: messageData.nextQuestion,
-        nextQuestionRephrased: messageData.nextQuestionRephrased,
-        answers: messageData.nextQuestionAnswers,
-        correctAnswer: messageData.nextQuestionCorrectAnswer,
-        hint: messageData.nextQuestionHint,
-        conceptCovered: messageData.nextQuestionConcept,
-        nextQuestionDifficulty: messageData.nextQuestionDifficulty,
-        studentProgress: messageData.studentProgress,
-      };
-    } catch (error) {
-      return null;
-    }
   },
 });
 

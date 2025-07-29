@@ -37,20 +37,24 @@ export const addFlashcards = createTool({
   }),
   handler: async (ctx, { courseId, flashcards }) => {
     const results = [];
+    const flashcardsToAdd = flashcards.map((flashcard) => ({
+      conceptTitle: flashcard.conceptTitle,
+      relatedArea: flashcard.conceptTitle,
+      suggestionImage: flashcard.flashcardImageDescription,
+      flashCardText: flashcard.flashcardContent,
+      generationType: "pre-generated",
+    }));
+
+    await ctx.runMutation(api.flashcards.addFlashcards, {
+      courseId,
+      flashcards: flashcardsToAdd,
+    });
+
     for (const flashcard of flashcards) {
-      const result = await ctx.runMutation(api.flashcards.addFlashcard, {
-        courseId,
-        conceptTitle: flashcard.conceptTitle,
-        relatedArea: flashcard.conceptTitle,
-        suggestionImage: flashcard.flashcardImageDescription,
-        flashCardText: flashcard.flashcardContent,
-        generationType: "pre-generated",
-      });
       results.push({
         conceptTitle: flashcard.conceptTitle,
         status: "added",
         content: flashcard.flashcardContent,
-        createdAt: result.flashcard.createdAt,
       });
     }
     return {
@@ -168,55 +172,56 @@ export const setNextQuestion = createTool({
   description: "Set the next question for the student in the course database",
   args: z.object({
     courseId: z.string().describe("The ID of the current course"),
-    question: z.string().describe("The main question to ask"),
-    questionRephrased: z
-      .string()
-      .describe("A rephrased version of the question"),
-    answers: z
-      .array(z.string())
-      .length(4)
-      .describe("Array of 4 answer options"),
-    correctAnswer: z.string().describe("The correct answer from the options"),
-    hint: z.string().describe("A hint for the question"),
-    concept: z.string().describe("The concept this question tests"),
-    difficulty: z
-      .enum(["easy", "hard"])
-      .describe("The difficulty level of the question"),
+    originalQuestion: z.object({
+      question: z.string().describe("The baseline question text."),
+      answers: z
+        .array(z.string())
+        .length(4)
+        .describe("Array of 4 answer choices."),
+      correctAnswer: z.string().describe("The correct answer text."),
+    }),
+    enhancedQuestion: z.object({
+      question: z.string().describe("The preference-enhanced question text."),
+      questionRephrased: z
+        .string()
+        .describe("A rephrased version of the enhanced question."),
+      answers: z
+        .array(z.string())
+        .length(4)
+        .describe("Array of 4 answer choices for the enhanced question."),
+      correctAnswer: z
+        .string()
+        .describe("The correct answer for the enhanced question."),
+      hint: z.string().describe("A hint for the enhanced question."),
+      conceptCovered: z
+        .string()
+        .describe("The concept this question is about."),
+      difficulty: z
+        .enum(["EASY", "HARD"])
+        .describe("The difficulty level of the question ('EASY' or 'HARD')"),
+    }),
     message: z
       .string()
-      .describe("A welcome message or feedback from the tutor to the student."),
+      .describe(
+        "A friendly, encouraging message for the student to be displayed.",
+      ),
   }),
   handler: async (
     ctx,
-    {
-      courseId,
-      question,
-      questionRephrased,
-      answers,
-      correctAnswer,
-      hint,
-      concept,
-      difficulty,
-      message,
-    },
+    { courseId, originalQuestion, enhancedQuestion, message },
   ) => {
     await ctx.runMutation(api.courses.setNextQuestion, {
       courseId,
-      question,
-      questionRephrased,
-      answers,
-      correctAnswer,
-      hint,
-      concept,
-      difficulty,
+      originalQuestion,
+      enhancedQuestion,
       message,
     });
 
     return {
       success: true,
-      question,
-      concept,
-      difficulty,
+      question: enhancedQuestion.question,
+      concept: enhancedQuestion.conceptCovered,
+      difficulty: enhancedQuestion.difficulty,
       message: "Next question has been set successfully",
     };
   },
@@ -227,7 +232,7 @@ export const tutorAgentTools = {
   addFlashcards,
   getStudentProgress,
   setStudentProgress,
-  initializeStudentProgress,
+  // initializeStudentProgress,
   getAllConcepts,
   setNextQuestion,
 };
