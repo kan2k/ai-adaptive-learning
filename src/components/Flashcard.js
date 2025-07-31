@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DotPattern } from "@/components/magicui/dot-pattern";
 import { cn } from "@/lib/utils";
+import { LLMContent } from "./LLMContent";
 
 export function Flashcard({ flashcards }) {
   const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0);
@@ -27,11 +28,39 @@ export function Flashcard({ flashcards }) {
     }
   };
 
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (flashcards.length <= 1) return;
+
+      switch (event.key) {
+        case "ArrowRight":
+          event.preventDefault();
+          nextFlashcard();
+          break;
+        case "ArrowLeft":
+          event.preventDefault();
+          prevFlashcard();
+          break;
+        default:
+          break;
+      }
+    };
+
+    // Add event listener
+    window.addEventListener("keydown", handleKeyDown);
+
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [flashcards.length]);
+
   const currentFlashcard =
     flashcards.length > 0 ? flashcards[currentFlashcardIndex] : null;
 
   return (
-    <div className="basis-[30%] bg-green-500 w-full rounded-l-[48px] rounded-r-[12px] p-8 text-xl relative">
+    <div className="h-full bg-green-500 w-full rounded-[48px] p-8 text-xl relative">
       <DotPattern
         className={cn(
           "[mask-image:radial-gradient(500px_circle_at_center,white,transparent)] z-0",
@@ -43,12 +72,15 @@ export function Flashcard({ flashcards }) {
         {/* Flashcard Content */}
         <div className="text-center flex-1 flex items-center justify-center px-4">
           {currentFlashcard ? (
-            <div className="space-y-1 flex flex-col items-center justify-center">
+            <div className="space-y-1 flex flex-col items-center justify-center gap-2">
               <div className="text-lg font-bold text-white text-shadow-black/50 text-shadow-xs">
                 {currentFlashcard.conceptTitle}
               </div>
-              <div className="text-base bg-white bg-opacity-20 rounded-lg px-4 py-4 mx-8 shadow-lg">
-                {currentFlashcard.flashCardText}
+              <pre className="whitespace-break-spaces font-[Menco] text-base bg-white bg-opacity-20 rounded-lg px-4 py-4 mx-8 shadow-lg text-left">
+                <LLMContent content={currentFlashcard.flashCardText} />
+              </pre>
+              <div className="text-sm bg-white rounded-lg px-4 py-2 w-[400px]">
+                {currentFlashcard.suggestionImage}
               </div>
             </div>
           ) : flashcards.length === 0 ? (

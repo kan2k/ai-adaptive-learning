@@ -12,6 +12,7 @@ export default defineSchema({
     selectedFileIds: v.optional(v.array(v.id("files"))),
     learningData: v.optional(
       v.object({
+        knowledgeGraph: v.optional(v.any()),
         nextQuestion: v.optional(
           v.object({
             originalQuestion: v.object({
@@ -120,4 +121,20 @@ export default defineSchema({
       }),
     ),
   }).index("by_token", ["tokenIdentifier"]),
+
+  chatThreads: defineTable({
+    userId: v.string(),
+    courseId: v.optional(v.id("courses")),
+    title: v.optional(v.string()),
+    threadId: v.string(),
+    createdAt: v.number(),
+    lastMessageAt: v.optional(v.number()),
+  }).index("by_user", ["userId"]),
+
+  chatMessages: defineTable({
+    threadId: v.string(),
+    role: v.union(v.literal("user"), v.literal("assistant")),
+    content: v.string(),
+    createdAt: v.number(),
+  }).index("by_thread", ["threadId"]),
 });

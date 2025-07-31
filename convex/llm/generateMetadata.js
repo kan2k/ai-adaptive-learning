@@ -19,6 +19,19 @@ Your task is to identify file information and summarize the main concepts that s
    - Find the author name(s) or organization (if not found, use "Unknown")
    - Write a compelling, direct description that jumps straight to what the content is about. CRITICAL: Never use meta-phrases that reference the document itself. Forbidden starts include: "This document", "This paper", "This module", "This guide", "This study", "This content", "This resource", "This material", etc. Start directly with the topic. Example: Instead of "This document provides an introduction to AI" write "Artificial Intelligence fundamentals including..."
 3. Then extract multiple distinct concepts from the document (typically 3-8 concepts per document)
+   - Only extract concepts that are directly related to the subject area of the document.
+   - CRITICAL: Focus ONLY on the actual subject matter content, not educational methodology or textbook design.
+   - EXCLUDE concepts about:
+     * Educational frameworks, policies, or curriculum design (e.g., National Curriculum Framework, educational policies)
+     * Textbook features, design principles, or teaching methodologies
+     * Assessment methods, evaluation strategies, or learning approaches
+     * Preface content, acknowledgments, or introductory sections about education
+     * Characters, interactive elements, or pedagogical tools used in the book
+   - INCLUDE concepts about:
+     * Core subject matter, scientific principles, theories, or factual content
+     * Practical applications, techniques, or procedures related to the subject
+     * Definitions, classifications, or categorizations within the subject domain
+     * Real-world examples, case studies, or phenomena explained in the subject context
 4. For each concept, provide:
    - A clear, concise title that captures the essence of the concept
    - A direct reference/quote from the source material that best represents this concept
@@ -354,13 +367,17 @@ const processSingleChunk = async (
         totalChunks > 1
           ? `Please analyze this document chunk (part ${chunkIndex} of ${totalChunks}) and extract key learning concepts. The document name is "${fileName}".
 
-Focus on identifying distinct educational concepts within this chunk. If this is not the first chunk, focus on new concepts not likely covered in previous sections.
+IMPORTANT: Focus ONLY on the actual subject matter content. EXCLUDE educational methodology, textbook design, curriculum frameworks, teaching approaches, or preface content. Only extract concepts that directly relate to the core subject being taught.
+
+If this is not the first chunk, focus on new concepts not likely covered in previous sections.
 
 Document text chunk:
 ${chunkText}
 
 Return the response in the specified JSON format.`
           : `Please analyze this document text and extract the key learning concepts. The document name is "${fileName}".
+
+IMPORTANT: Focus ONLY on the actual subject matter content. EXCLUDE educational methodology, textbook design, curriculum frameworks, teaching approaches, or preface content. Only extract concepts that directly relate to the core subject being taught.
 
 Document text:
 ${chunkText}
@@ -608,7 +625,11 @@ export const generateMetadata = internalAction({
                 content: [
                   {
                     type: "text",
-                    text: `Please analyze this PDF document and extract the key learning concepts. Return the response in the specified JSON format.`,
+                    text: `Please analyze this PDF document and extract the key learning concepts. 
+
+IMPORTANT: Focus ONLY on the actual subject matter content. EXCLUDE educational methodology, textbook design, curriculum frameworks, teaching approaches, or preface content. Only extract concepts that directly relate to the core subject being taught.
+
+Return the response in the specified JSON format.`,
                   },
                   {
                     type: "file",

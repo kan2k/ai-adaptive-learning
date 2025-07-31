@@ -83,7 +83,7 @@ export default function UploadedFiles({ courseId }) {
                         isSelectable ? handleFileSelect(file._id) : undefined
                       }
                     >
-                      <td className="p-4 whitespace-nowrap">
+                      <td className="p-4 ">
                         <div className="flex items-start">
                           <div className="w-5 h-5 mr-3 mt-0.5 flex items-center justify-center">
                             {file.metadata?.status === "processing" ? (
@@ -96,8 +96,10 @@ export default function UploadedFiles({ courseId }) {
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-bold font-[Menco] text-gray-900 flex flex-row gap-2">
-                              {file.name}
+                            <div className="text-sm font-bold font-[Menco] text-gray-900 flex flex-row gap-2 break-words">
+                              <span className="break-all leading-4">
+                                {file.name}
+                              </span>
                               {/* {file.metadata?.relatedArea && (
                                 <span className="inline-flex items-center px-2 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                   {file.metadata.relatedArea}
@@ -112,7 +114,7 @@ export default function UploadedFiles({ courseId }) {
                             {file.metadata ? (
                               <>
                                 {file.metadata.description && (
-                                  <div className="text-xs text-gray-600 font-medium line-clamp-2 whitespace-pre-wrap leading-3">
+                                  <div className="mt-1 text-xs text-gray-600 font-medium line-clamp-2 whitespace-pre-wrap leading-4">
                                     {file.metadata.description}
                                   </div>
                                 )}

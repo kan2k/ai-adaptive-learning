@@ -276,12 +276,54 @@ export const getSelectedFilesWithDetails = query({
 export const deleteCourse = mutation({
   args: {
     courseId: v.id("courses"),
+    userId: v.string(),
   },
+  returns: v.object({
+    success: v.boolean(),
+  }),
   handler: async (ctx, args) => {
+    const course = await ctx.db.get(args.courseId);
+    if (!course) {
+      throw new Error("Course not found");
+    }
+
+    if (course.createdBy !== args.userId) {
+      throw new Error("Unauthorized: You don't own this course");
+    }
+
     // Note: We no longer delete files from storage when deleting a course
     // Files remain in the system and can potentially be reused
     // Only delete the course document
     await ctx.db.delete(args.courseId);
+
+    return { success: true };
+  },
+});
+
+export const restartCourse = mutation({
+  args: {
+    courseId: v.id("courses"),
+    userId: v.string(),
+  },
+  returns: v.object({
+    success: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const course = await ctx.db.get(args.courseId);
+    if (!course) {
+      throw new Error("Course not found");
+    }
+
+    if (course.createdBy !== args.userId) {
+      throw new Error("Unauthorized: You don't own this course");
+    }
+
+    // Clear all learning data but keep the course structure and files
+    await ctx.db.patch(args.courseId, {
+      learningData: {},
+    });
+
+    return { success: true };
   },
 });
 
@@ -644,6 +686,7 @@ export const getLearningData = query({
       nextQuestion: learningData.nextQuestion || null,
       studentProgress: learningData.studentProgress || {},
       flashcards: flashcards || [],
+      knowledgeGraph: learningData.knowledgeGraph || null,
     };
   },
 });
@@ -679,5 +722,32 @@ export const getNextQuestion = query({
       return null;
     }
     return course.learningData?.nextQuestion || null;
+  },
+});
+
+export const updateCourseLearningData = mutation({
+  args: {
+    courseId: v.id("courses"),
+    learningData: v.any(),
+  },
+  returns: v.object({
+    success: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const course = await ctx.db.get(args.courseId);
+    if (!course) {
+      throw new Error("Course not found");
+    }
+
+    const currentLearningData = course.learningData || {};
+
+    await ctx.db.patch(args.courseId, {
+      learningData: {
+        ...currentLearningData,
+        ...args.learningData,
+      },
+    });
+
+    return { success: true };
   },
 });

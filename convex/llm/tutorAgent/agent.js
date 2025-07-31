@@ -88,12 +88,7 @@ To avoid student finding patterns in correct answer generation, follow these rul
 - The wrong answers SHOULD at least have one with similar wording from correct answer and reference in materials.
 </cheat_and_pattern_prevention>
 
-<flashcard_and_student_progress_initialization>
-- When starting a new lesson (context type is start_lesson), use addFlashcards tool to add flashcards for all course concepts, at least 1 flashcard per concept, use more flashcards if concept is complex or lengthy
-</flashcard_and_student_progress_initialization>
-
 <flashcard_generation>
-- When starting a new lesson, use addFlashcards tool to add flashcards for all course concepts, at least 1 flashcard per concept, use more flashcards if concept is complex or lengthy
 - generate flashcards when a concept has 2+ mistakes (check this from the progress object via getStudentProgress tool)
 - Use addFlashcards tool IMMEDIATELY when a concept reaches 2 mistakes
 - Check existing flashcards using getFlashcards tool to avoid duplicates
@@ -174,7 +169,7 @@ Your final response MUST be a single JSON object with the following structure:
 <tool_use>
 - ALWAYS use tools before generating a question
 - proactively use tools to track student progress and performance
-- proactively use tools to generate flashcards and schedule for spaced repetition
+- proactively use tools to generate flashcards when concepts have 2+ mistakes and schedule for spaced repetition
 - ALWAYS use setNextQuestion tool to store the next question for the student - this is required for the frontend to display the question
 - Use setStudentProgress to update percentage based on your assessment of student confidence/understanding (not just correctness)
 - Add meaningful observations that capture learning patterns, struggles, breakthroughs, and teaching insights for each concept
@@ -231,7 +226,7 @@ export const startCourse = internalAction({
       if (file.metadata && file.metadata.concepts) {
         materials.push(`--- material: ${file.name}, fileId:${file._id} ---`);
         for (const concept of file.metadata.concepts) {
-          materials.push(`${concept.title}: ${concept.summary}`);
+          materials.push(`${concept.title}: ${concept.reference}`);
         }
       }
     }
@@ -240,6 +235,28 @@ export const startCourse = internalAction({
 
     // Initialize student progress before starting the agent
     await ctx.runMutation(api.courses.initializeStudentProgress, { courseId });
+
+    // Schedule knowledge graph generation asynchronously (non-blocking)
+    console.log("[Scheduling knowledge graph generation for course]", courseId);
+
+    await ctx.scheduler.runAfter(
+      1000, // 1 second delay to ensure agent has time to set initial question
+      internal.llm.tutorAgent.generateKnowledgeGraph.generateKnowledgeGraph,
+      {
+        courseId: courseId,
+      },
+    );
+
+    // Schedule flashcard generation asynchronously (non-blocking)
+    console.log("[Scheduling flashcard generation for course]", courseId);
+
+    await ctx.scheduler.runAfter(
+      2000, // 2 second delay to ensure knowledge graph generation has started
+      internal.llm.tutorAgent.generateFlashcards.generateFlashcards,
+      {
+        courseId: courseId,
+      },
+    );
 
     const tutorAgent = getTutorAgent(courseId, materials);
     const { thread } = await tutorAgent.createThread(ctx, {
@@ -336,7 +353,7 @@ export const answerQuestion = action({
     for (const file of courseWithFiles.files) {
       materials.push(`--- material: ${file.name}, fileId:${file._id} ---`);
       for (const concept of file.metadata.concepts) {
-        materials.push(`${concept.title}: ${concept.summary}`);
+        materials.push(`${concept.title}: ${concept.reference}`);
       }
     }
 

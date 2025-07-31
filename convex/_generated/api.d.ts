@@ -8,12 +8,15 @@
  * @module
  */
 
+import type * as chat from "../chat.js";
 import type * as courses from "../courses.js";
 import type * as files from "../files.js";
 import type * as flashcards from "../flashcards.js";
 import type * as llm_generateMetadata from "../llm/generateMetadata.js";
 import type * as llm_providers from "../llm/providers.js";
 import type * as llm_tutorAgent_agent from "../llm/tutorAgent/agent.js";
+import type * as llm_tutorAgent_generateFlashcards from "../llm/tutorAgent/generateFlashcards.js";
+import type * as llm_tutorAgent_generateKnowledgeGraph from "../llm/tutorAgent/generateKnowledgeGraph.js";
 import type * as llm_tutorAgent_tools from "../llm/tutorAgent/tools.js";
 import type * as users from "../users.js";
 
@@ -32,12 +35,15 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  chat: typeof chat;
   courses: typeof courses;
   files: typeof files;
   flashcards: typeof flashcards;
   "llm/generateMetadata": typeof llm_generateMetadata;
   "llm/providers": typeof llm_providers;
   "llm/tutorAgent/agent": typeof llm_tutorAgent_agent;
+  "llm/tutorAgent/generateFlashcards": typeof llm_tutorAgent_generateFlashcards;
+  "llm/tutorAgent/generateKnowledgeGraph": typeof llm_tutorAgent_generateKnowledgeGraph;
   "llm/tutorAgent/tools": typeof llm_tutorAgent_tools;
   users: typeof users;
 }>;
