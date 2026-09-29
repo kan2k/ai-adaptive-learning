@@ -8,6 +8,7 @@ import {
   updateCourse,
   STUDY_DIR,
 } from "@/server/db";
+import { safeName } from "@/server/safe-name";
 
 export async function GET(request, { params }) {
   const { id } = await params;
@@ -25,7 +26,7 @@ export async function PATCH(request, { params }) {
       updateCourse(id, { lastOpenedAt: Date.now() });
     }
     if (typeof body.name === "string" && body.name.trim()) {
-      const newName = body.name.trim();
+      const newName = safeName(body.name);
       const db = getDb();
       const row = db
         .prepare("SELECT folder_path FROM courses WHERE id = ?")

@@ -18,14 +18,12 @@ import {
 } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useQuery, useMutation, useAction } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { useAuth } from "@clerk/clerk-react";
+import useSWR from "swr";
+import { fetcher, apiFetch } from "@/lib/api";
 import { Spinner } from "./ui/spinner";
 import { LLMContent } from "./LLMContent";
 
 export function Chat({ courseId }) {
-  const { userId } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [currentThreadId, setCurrentThreadId] = useState(null);
   const [message, setMessage] = useState("");
@@ -34,43 +32,51 @@ export function Chat({ courseId }) {
   const textareaRef = useRef(null);
 
   // Queries
-  const threads = useQuery(
-    api.chat.getChatThreads,
-    userId ? { userId } : "skip",
+  const { data: threads, mutate: mutateThreads } = useSWR(
+    "/api/chat/threads",
+    fetcher,
+    { refreshInterval: 5000 },
   );
-  const messages = useQuery(
-    api.chat.getChatMessages,
-    currentThreadId ? { threadId: currentThreadId } : "skip",
+  const { data: messages, mutate: mutateMessages } = useSWR(
+    currentThreadId ? `/api/chat/threads/${currentThreadId}/messages` : null,
+    fetcher,
+    { refreshInterval: 1500 },
   );
-  const courseMaterials = useQuery(
-    api.courses.getCourseWithFiles,
-    courseId ? { courseId } : "skip",
+  const { data: courseMaterials } = useSWR(
+    courseId ? `/api/courses/${courseId}` : null,
+    fetcher,
   );
 
-  // Mutations and Actions
-  const createThread = useAction(api.chat.createChatThread);
-  const sendMessage = useAction(api.chat.sendMessage);
-  const deleteThread = useMutation(api.chat.deleteChatThread);
+  const sendMessage = useCallback(
+    async ({ threadId, content }) => {
+      const result = await apiFetch(`/api/chat/threads/${threadId}/messages`, {
+        body: { content },
+      });
+      await mutateMessages();
+      return result;
+    },
+    [mutateMessages],
+  );
 
   const handleCreateThread = useCallback(async () => {
-    if (!userId || !courseId) {
-      console.log("Cannot create thread: missing userId or courseId", {
-        userId,
-        courseId,
-      });
+    if (!courseId) {
+      console.log("Cannot create thread: missing courseId", { courseId });
       return;
     }
 
     setIsLoading(true);
     try {
-      const result = await createThread({ userId, courseId });
+      const result = await apiFetch("/api/chat/threads", {
+        body: { courseId },
+      });
+      await mutateThreads();
       setCurrentThreadId(result.threadId);
     } catch (error) {
       console.error("Error creating thread:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [userId, courseId, createThread]);
+  }, [courseId, mutateThreads]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -131,6 +137,7 @@ export function Chat({ courseId }) {
       console.log("Message sent result:", result);
     } catch (error) {
       console.error("Error sending message:", error);
+      alert(error.message);
       // Reset message if there was an error
       setMessage(messageContent);
     } finally {
@@ -141,7 +148,8 @@ export function Chat({ courseId }) {
   const handleDeleteThread = useCallback(
     async (threadId) => {
       try {
-        await deleteThread({ threadId });
+        await apiFetch(`/api/chat/threads/${threadId}`, { method: "DELETE" });
+        await mutateThreads();
         if (currentThreadId === threadId) {
           setCurrentThreadId(null);
         }
@@ -149,7 +157,7 @@ export function Chat({ courseId }) {
         console.error("Error deleting thread:", error);
       }
     },
-    [currentThreadId, deleteThread],
+    [currentThreadId, mutateThreads],
   );
 
   const handleKeyPress = useCallback(
@@ -232,6 +240,7 @@ export function Chat({ courseId }) {
         console.log("Suggestion sent result:", result);
       } catch (error) {
         console.error("Error sending suggestion:", error);
+        alert(error.message);
       } finally {
         setIsLoading(false);
       }

@@ -1,6 +1,4 @@
-import { useUser } from "@clerk/clerk-react";
-import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { apiFetch } from "@/lib/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +6,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Book, Check, ChevronDownIcon, PlusIcon, Settings } from "lucide-react";
-import { UserButton } from "@clerk/clerk-react";
 import { Preferences } from "./Preferences";
 import {
   Dialog,
@@ -26,40 +23,26 @@ export function Navbar({
   setSelectedCourse,
   createCourse,
 }) {
-  const { user } = useUser();
-  const updateLastOpened = useMutation(api.courses.updateLastOpened);
-
   const handleCreateCourse = async () => {
-    if (!user?.id) {
-      console.error("User not authenticated");
-      return;
-    }
-
     try {
-      const courseId = await createCourse({
-        createdBy: user.id,
+      const newCourse = await createCourse();
+      await apiFetch(`/api/courses/${newCourse._id}`, {
+        method: "PATCH",
+        body: { opened: true },
       });
-      // Construct the new course object with the data we know
-      const newCourse = {
-        _id: courseId,
-        name: "Untitled Course", // This matches the default name in the mutation
-        createdBy: user.id,
-        createdAt: Date.now(),
-        lastOpenedAt: Date.now(),
-        fileIds: [],
-        selectedFileIds: [],
-      };
-      await updateLastOpened({ courseId, userId: user.id });
       setSelectedCourse(newCourse);
 
-      console.log("Course created and selected:", courseId);
+      console.log("Course created and selected:", newCourse._id);
     } catch (error) {
       console.error("Failed to create course:", error);
     }
   };
 
   const handleCourseSelect = async (course) => {
-    await updateLastOpened({ courseId: course._id, userId: user.id });
+    await apiFetch(`/api/courses/${course._id}`, {
+      method: "PATCH",
+      body: { opened: true },
+    });
     setSelectedCourse(course);
   };
 
@@ -151,11 +134,6 @@ export function Navbar({
               <Preferences />
             </DialogContent>
           </Dialog>
-        </div>
-        <div className="flex flex-row gap-2 items-center">
-          <div className="flex flex-row rounded-full border-2 scale-105 border-white">
-            <UserButton />
-          </div>
         </div>
       </div>
     </div>

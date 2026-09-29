@@ -3,6 +3,7 @@ import path from "path";
 import { handle, httpError } from "@/server/http";
 import { getDb, STUDY_DIR } from "@/server/db";
 import { scan } from "@/server/scanner";
+import { safeName } from "@/server/safe-name";
 
 const ALLOWED = new Set([".md", ".txt", ".pdf"]);
 
@@ -14,7 +15,8 @@ export async function POST(request) {
     if (!file || typeof file === "string") throw httpError("file is required");
     if (!courseId) throw httpError("courseId is required");
 
-    const ext = path.extname(file.name).toLowerCase();
+    const uploadName = safeName(file.name);
+    const ext = path.extname(uploadName).toLowerCase();
     if (!ALLOWED.has(ext)) {
       throw httpError("Only .md, .txt, and .pdf files are supported");
     }
@@ -29,7 +31,7 @@ export async function POST(request) {
         ? course.folder_path
         : STUDY_DIR;
 
-    const base = path.basename(file.name, ext);
+    const base = path.basename(uploadName, ext);
     let targetName = `${base}${ext}`;
     let counter = 2;
     while (fs.existsSync(path.join(targetDir, targetName))) {

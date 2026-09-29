@@ -1,26 +1,31 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import useSWR from "swr";
+import { fetcher, apiFetch } from "@/lib/api";
 import { Trash, Check } from "lucide-react";
 import { Spinner } from "./ui/spinner";
 import { Checkbox } from "./ui/checkbox";
 
 export default function UploadedFiles({ courseId }) {
-  const removeFile = useMutation(api.courses.removeFile);
-  const toggleFileSelection = useMutation(api.courses.toggleFileSelection);
-
-  const files = useQuery(api.files.getFiles, courseId ? { courseId } : "skip");
-  const selectedFileIds = useQuery(
-    api.courses.getSelectedFiles,
-    courseId ? { courseId } : "skip",
+  const { data: files, mutate: mutateFiles } = useSWR(
+    courseId ? `/api/courses/${courseId}/files` : null,
+    fetcher,
+    { refreshInterval: 3000 },
+  );
+  const { data: selectedFileIds, mutate: mutateSelected } = useSWR(
+    courseId ? `/api/courses/${courseId}/selected-files` : null,
+    fetcher,
+    { refreshInterval: 3000 },
   );
 
   const handleRemove = async (fileId) => {
     if (!courseId) return;
 
     try {
-      await removeFile({ courseId, fileId });
+      await apiFetch(`/api/courses/${courseId}/files/${fileId}`, {
+        method: "DELETE",
+      });
+      await Promise.all([mutateFiles(), mutateSelected()]);
     } catch (error) {
       console.error("Remove failed:", error);
     }
@@ -31,7 +36,10 @@ export default function UploadedFiles({ courseId }) {
     if (file?.metadata?.status !== "success") return;
 
     try {
-      await toggleFileSelection({ courseId, fileId });
+      await apiFetch(`/api/courses/${courseId}/selected-files`, {
+        body: { fileId },
+      });
+      await mutateSelected();
     } catch (error) {
       console.error("Toggle selection failed:", error);
     }

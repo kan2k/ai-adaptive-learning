@@ -2,65 +2,17 @@
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { useMutation } from "convex/react";
-import { useUser } from "@clerk/clerk-react";
-import { api } from "../../convex/_generated/api";
-
-// Function to extract text from PDF file
-const extractTextFromPDF = async (file) => {
-  // Dynamically import pdfjs-dist only when needed (client-side)
-  const pdfjsLib = await import("pdfjs-dist");
-
-  // Configure PDF.js worker - use local worker file
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "/js/pdf.worker.min.js";
-
-  return new Promise((resolve, reject) => {
-    const fileReader = new FileReader();
-
-    fileReader.onload = async function () {
-      try {
-        const typedarray = new Uint8Array(this.result);
-        const pdf = await pdfjsLib.getDocument(typedarray).promise;
-
-        let fullText = "";
-
-        // Extract text from each page
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items.map((item) => item.str).join(" ");
-          fullText += pageText + "\n\n";
-        }
-
-        resolve(fullText.trim());
-      } catch (error) {
-        reject(error);
-      }
-    };
-
-    fileReader.onerror = () => reject(new Error("Failed to read file"));
-    fileReader.readAsArrayBuffer(file);
-  });
-};
+import { useSWRConfig } from "swr";
 
 export default function UploadDropZone({ courseId, onUploadComplete }) {
-  const { user } = useUser();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
   const [progressStages, setProgressStages] = useState({});
-
-  const saveTextFile = useMutation(api.files.saveTextFile);
-
-  const getProgressStage = (progress) => {
-    if (progress < 20) return "Starting...";
-    if (progress < 60) return "Extracting text...";
-    if (progress < 100) return "Saving content...";
-    return "Complete!";
-  };
+  const { mutate } = useSWRConfig();
 
   const onDrop = useCallback(
     async (acceptedFiles) => {
-      if (!user || !courseId) return;
+      if (!courseId) return;
 
       setIsUploading(true);
 
@@ -72,31 +24,27 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
             [file.name]: "Starting...",
           }));
 
-          // Extract text from PDF
-          console.log(`Extracting text from: ${file.name}`);
-          setUploadProgress((prev) => ({ ...prev, [file.name]: 20 }));
+          setUploadProgress((prev) => ({ ...prev, [file.name]: 30 }));
           setProgressStages((prev) => ({
             ...prev,
-            [file.name]: "Extracting text...",
+            [file.name]: "Saving to study folder...",
           }));
 
-          const textContent = await extractTextFromPDF(file);
-          console.log(
-            `Text extracted, length: ${textContent.length} characters`,
-          );
-          setUploadProgress((prev) => ({ ...prev, [file.name]: 60 }));
-          setProgressStages((prev) => ({
-            ...prev,
-            [file.name]: "Saving content...",
-          }));
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("courseId", courseId);
 
-          // Save text content to database
-          await saveTextFile({
-            name: file.name,
-            textContent: textContent,
-            originalSize: file.size,
-            courseId,
+          const res = await fetch("/api/import", {
+            method: "POST",
+            body: formData,
           });
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            throw new Error(data?.error || `Upload failed: ${res.status}`);
+          }
+
+          await mutate(`/api/courses/${courseId}/files`);
+          await mutate(`/api/courses/${courseId}/selected-files`);
 
           setUploadProgress((prev) => ({ ...prev, [file.name]: 100 }));
           setProgressStages((prev) => ({ ...prev, [file.name]: "Complete!" }));
@@ -115,7 +63,7 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
             });
           }, 2000);
         } catch (error) {
-          console.error("Text extraction or upload failed:", error);
+          console.error("Upload failed:", error);
           setUploadProgress((prev) => {
             const newProgress = { ...prev };
             delete newProgress[file.name];
@@ -135,13 +83,15 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
       setIsUploading(false);
       onUploadComplete?.();
     },
-    [user, courseId, saveTextFile, onUploadComplete],
+    [courseId, mutate, onUploadComplete],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       "application/pdf": [".pdf"],
+      "text/markdown": [".md"],
+      "text/plain": [".txt"],
     },
     multiple: true,
     disabled: !courseId,
@@ -196,12 +146,12 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
           </svg>
           {isDragActive ? (
             <p className="text-orange-500 font-medium text-base">
-              Drop the PDF files here...
+              Drop your notes here...
             </p>
           ) : (
             <div>
               <p className="text-orange-500 font-medium text-base">
-                Drop PDF files here...
+                Drop PDF, Markdown, or text files here...
               </p>
             </div>
           )}

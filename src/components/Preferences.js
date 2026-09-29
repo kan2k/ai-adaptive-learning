@@ -8,8 +8,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import useSWR from "swr";
+import { fetcher, apiFetch } from "@/lib/api";
 import { useState, useEffect } from "react";
 import { Check, X } from "lucide-react";
 import Image from "next/image";
@@ -89,8 +89,11 @@ const getPreviewQuestion = (preferences) => {
 };
 
 export function Preferences() {
-  const dbPreferences = useQuery(api.users.getPreferences);
-  const savePreferences = useMutation(api.users.savePreferences);
+  const { data: preferencesData, mutate: mutatePreferences } = useSWR(
+    "/api/preferences",
+    fetcher,
+  );
+  const dbPreferences = preferencesData?.preferences;
 
   const [selectedPreferences, setSelectedPreferences] = useState({
     languageComplexity: "High School",
@@ -129,7 +132,11 @@ export function Preferences() {
   const handleSaveChanges = async () => {
     setIsSaving(true);
     try {
-      await savePreferences({ preferences: selectedPreferences });
+      await apiFetch("/api/preferences", {
+        method: "PUT",
+        body: { preferences: selectedPreferences },
+      });
+      await mutatePreferences();
       setInitialPreferences(selectedPreferences); // update initial state
       setShowSuccess(true);
       setTimeout(() => {
