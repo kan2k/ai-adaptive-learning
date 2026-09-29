@@ -1,6 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import { getModel, hasLLM } from "./providers.js";
+import { getModel, hasLLM, MissingApiKeyError } from "./providers.js";
 import { getFileById, saveFileMetadata, getCourseFiles } from "../db.js";
 
 const getSystemPrompt = () => `<role>
@@ -183,6 +183,7 @@ Return the response in the specified JSON format.`;
 
       return result.object;
     } catch (aiError) {
+      if (aiError.name === "MissingApiKeyError") throw aiError;
       retryCount++;
       console.error(
         `AI analysis attempt ${retryCount} failed for chunk ${chunkIndex} of file ${fileId}:`,
@@ -203,6 +204,7 @@ Return the response in the specified JSON format.`;
 
 export async function generateMetadataFromText(fileId) {
   try {
+    if (!hasLLM()) throw new MissingApiKeyError();
     saveFileMetadata(fileId, {
       relatedArea: "",
       author: "",

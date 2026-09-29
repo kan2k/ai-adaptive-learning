@@ -366,11 +366,12 @@ const tutorAgentTools = {
 const TUTOR_HISTORY_LIMIT = 100;
 
 async function runTutorTurn({ courseId, threadId, materials, prompt }) {
+  const model = getModel({ temperature: 0.2 });
   addMessage({ threadId, role: "user", content: prompt });
   const history = getRecentMessages(threadId, TUTOR_HISTORY_LIMIT);
 
   const result = await generateText({
-    model: getModel({ temperature: 0.2 }),
+    model,
     system: instructions(courseId, materials.join("\n")),
     messages: history,
     tools: tutorAgentTools,
