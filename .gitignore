@@ -45,3 +45,4 @@ next-env.d.ts
 .study/
 !.env.example
 standalone/
+dist-app/
