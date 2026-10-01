@@ -123,7 +123,8 @@
     "publish": {
       "provider": "github",
       "owner": "kan2k",
-      "repo": "ai-adaptive-learning"
+      "repo": "ai-adaptive-learning",
+      "releaseType": "draft"
     }
   },
   "license": "Apache-2.0",
