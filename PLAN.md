@@ -22,10 +22,33 @@ colorful UI is the brand and stays.
    `app/api/*` backed by a `src/server/db.js` layer; React components swap
    `useQuery/useMutation/useAction` for SWR + fetch.
 
-## Phase 2 — feature upgrades (later)
+## Phase 2 — LLM approach + feature upgrades (researched 2026-10-01)
 
-FSRS spaced repetition + daily review queue; source citations back to
-note/heading; study-session loop; knowledge graph stays the centerpiece.
+How the serious platforms split the work (Khanmigo, Duolingo Max, and the
+FSRS/LECTOR research line): a STRONG model for the live tutoring dialogue,
+a CHEAP model for bulk content generation, and a DETERMINISTIC scheduler —
+never the LLM — deciding when things get reviewed.
+
+1. Model routing by task (env-driven, both through OpenRouter):
+   - `OPENROUTER_MODEL_FAST` (default google/gemini-2.5-flash): concept
+     extraction, flashcard/distractor generation, chat titles.
+   - `OPENROUTER_MODEL_SMART` (default anthropic/claude-sonnet-5): the
+     tutor agent (question adaptation, Socratic feedback, observations).
+     This is where quality is felt; Khanmigo-class tutors run frontier
+     models here (their RCT showed +0.34 SD algebra gains).
+2. Structured outputs: replace "return JSON" prompts with ai-sdk
+   `generateObject` + zod schemas for questions/flashcards/concepts/graph.
+   Kills the JSON-parse failure class entirely (the new debug log shows
+   any parse retry today).
+3. FSRS scheduling (fsrs.js, FSRS-6): per-flashcard stability/
+   retrievability, daily review queue. The LLM stops being asked to do
+   spaced repetition in-prompt (it currently is) — research consensus:
+   LLM for content, FSRS for timing ("without the scheduler you have a
+   generator; with it, a study system").
+4. Explain-my-answer: on a wrong answer, a short Socratic explanation of
+   why the chosen option fails (Duolingo Max's most-loved feature).
+5. Source citations: every question/answer links back to note + heading.
+6. Study-session loop; knowledge graph stays the centerpiece.
 
 ## Phase 3 — OSS packaging (later)
 
