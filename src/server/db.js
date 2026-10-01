@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { createHash } from "crypto";
 import fs from "fs";
 import path from "path";
 
@@ -74,6 +75,12 @@ function openDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_messages_thread ON chat_messages(thread_id);
     CREATE INDEX IF NOT EXISTS idx_files_course ON files(course_id);
+    CREATE TABLE IF NOT EXISTS file_cache (
+      content_hash TEXT PRIMARY KEY,
+      metadata TEXT NOT NULL,
+      stashed_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS preferences (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       data TEXT NOT NULL
@@ -100,6 +107,22 @@ function openDb() {
     CREATE INDEX IF NOT EXISTS idx_flashcards_course_due ON flashcards(course_id, due);
   `);
   migrateFlashcardsFromLearningData(db);
+  const fileCols = db.prepare("PRAGMA table_info(files)").all().map((c) => c.name);
+  if (!fileCols.includes("content_hash")) {
+    db.prepare("ALTER TABLE files ADD COLUMN content_hash TEXT").run();
+  }
+  // Backfill: hash rows that predate the column, and seed the cache from
+  // everything already generated so delete-and-re-add works for history.
+  const unhashed = db
+    .prepare("SELECT id, text_content FROM files WHERE content_hash IS NULL AND text_content IS NOT NULL")
+    .all();
+  for (const row of unhashed) {
+    const hash = createHash("sha256").update(row.text_content).digest("hex");
+    db.prepare("UPDATE files SET content_hash = ? WHERE id = ?").run(hash, row.id);
+  }
+  db.prepare(
+    "INSERT OR IGNORE INTO file_cache (content_hash, metadata, stashed_at) SELECT content_hash, metadata, ? FROM files WHERE metadata IS NOT NULL AND content_hash IS NOT NULL",
+  ).run(Date.now());
   return db;
 }
 
@@ -331,9 +354,30 @@ export function getFileById(fileId) {
 }
 
 export function saveFileMetadata(fileId, metadata) {
-  getDb()
-    .prepare("UPDATE files SET metadata = ? WHERE id = ?")
-    .run(JSON.stringify(metadata), Number(fileId));
+  const db = getDb();
+  db.prepare("UPDATE files SET metadata = ? WHERE id = ?").run(
+    JSON.stringify(metadata),
+    Number(fileId),
+  );
+  // Cache by content hash so deleting a file and adding the same one back
+  // restores identical concepts instantly - no regeneration, and progress
+  // keyed by concept title lines up again.
+  const row = db
+    .prepare("SELECT content_hash FROM files WHERE id = ?")
+    .get(Number(fileId));
+  if (row?.content_hash) {
+    db.prepare(
+      "INSERT OR REPLACE INTO file_cache (content_hash, metadata, stashed_at) VALUES (?, ?, ?)",
+    ).run(row.content_hash, JSON.stringify(metadata), Date.now());
+  }
+}
+
+export function cachedMetadataForHash(hash) {
+  if (!hash) return null;
+  const row = getDb()
+    .prepare("SELECT metadata FROM file_cache WHERE content_hash = ?")
+    .get(hash);
+  return row ? row.metadata : null;
 }
 
 // --- preferences (single local user) ---

@@ -1,10 +1,12 @@
 import fs from "fs";
+import crypto from "crypto";
 import { logError } from "./log.js";
 import path from "path";
 import {
   getDb,
   ensureStudyDir,
   STUDY_DIR,
+  cachedMetadataForHash,
 } from "./db.js";
 import { ensureMetadataForCourse } from "./llm/generateMetadata.js";
 
@@ -174,9 +176,15 @@ async function indexFile(filePath) {
 
   const ext = path.extname(filePath).toLowerCase();
   const name = path.basename(filePath);
+  const hash = text
+    ? crypto.createHash("sha256").update(text).digest("hex")
+    : null;
+  // Identical content seen before (same file re-added, or renamed) reuses
+  // its generated concepts instead of paying for regeneration.
+  const cached = cachedMetadataForHash(hash);
   if (existing) {
     db.prepare(
-      "UPDATE files SET course_id = ?, name = ?, type = ?, size = ?, uploaded_at = ?, text_content = ?, metadata = NULL WHERE id = ?",
+      "UPDATE files SET course_id = ?, name = ?, type = ?, size = ?, uploaded_at = ?, text_content = ?, content_hash = ?, metadata = ? WHERE id = ?",
     ).run(
       courseId,
       name,
@@ -184,11 +192,13 @@ async function indexFile(filePath) {
       stat.size,
       Math.round(stat.mtimeMs),
       text,
+      hash,
+      cached,
       existing.id,
     );
   } else {
     db.prepare(
-      "INSERT INTO files (course_id, name, type, size, uploaded_at, source_path, text_content, selected) VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
+      "INSERT INTO files (course_id, name, type, size, uploaded_at, source_path, text_content, content_hash, metadata, selected) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
     ).run(
       courseId,
       name,
@@ -197,6 +207,8 @@ async function indexFile(filePath) {
       Math.round(stat.mtimeMs),
       filePath,
       text,
+      hash,
+      cached,
     );
   }
   // Concepts generate as soon as a file is indexed, so "Begin course" is

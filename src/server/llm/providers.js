@@ -40,6 +40,19 @@ export const PROVIDERS = {
     label: "OpenRouter (300+ models, one key)",
     keyUrl: "https://openrouter.ai/keys",
     defaults: { fast: "google/gemini-2.5-flash", smart: "deepseek/deepseek-v4.1-flash" },
+    choices: {
+      fast: [
+        ["google/gemini-2.5-flash", "Gemini 2.5 Flash — recommended"],
+        ["deepseek/deepseek-v4.1-flash", "DeepSeek V4.1 Flash — cheapest"],
+        ["z-ai/glm-5.3-flash", "GLM 5.3 Flash"],
+      ],
+      smart: [
+        ["deepseek/deepseek-v4.1-flash", "DeepSeek V4.1 Flash — recommended, ~$1/mo"],
+        ["z-ai/glm-5.3-flash", "GLM 5.3 Flash — ~$2/mo"],
+        ["qwen/qwen3.8-flash", "Qwen 3.8 Flash"],
+        ["anthropic/claude-sonnet-5", "Claude Sonnet 5 — premium, ~$15/mo"],
+      ],
+    },
   },
   openai: {
     label: "OpenAI",
@@ -53,6 +66,13 @@ export const PROVIDERS = {
     kind: "anthropic",
     keyUrl: "https://console.anthropic.com/settings/keys",
     defaults: { fast: "claude-haiku-4-5", smart: "claude-sonnet-5" },
+    choices: {
+      fast: [["claude-haiku-4-5", "Claude Haiku 4.5 — recommended"]],
+      smart: [
+        ["claude-sonnet-5", "Claude Sonnet 5 — recommended"],
+        ["claude-haiku-4-5", "Claude Haiku 4.5 — cheaper"],
+      ],
+    },
   },
   google: {
     label: "Google AI Studio",
@@ -97,6 +117,10 @@ export const PROVIDERS = {
     baseURL: "http://localhost:11434/v1",
     keyless: true,
     defaults: { fast: "llama3.1", smart: "llama3.1" },
+    choices: {
+      fast: [["llama3.1", "Llama 3.1"], ["qwen3", "Qwen 3"], ["mistral", "Mistral"]],
+      smart: [["llama3.1", "Llama 3.1"], ["qwen3", "Qwen 3"], ["mistral", "Mistral"]],
+    },
   },
   custom: {
     label: "Custom OpenAI-compatible endpoint",

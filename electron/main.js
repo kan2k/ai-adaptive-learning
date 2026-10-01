@@ -77,20 +77,31 @@ function setupPage() {
   const keyUrls = JSON.stringify(Object.fromEntries(SETUP_PROVIDERS.map(([id, , u]) => [id, u])));
   return (
     "data:text/html;charset=utf-8," +
-    encodeURIComponent(`<style>${fontCss()}</style><body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(45deg,#facc15,#facc15 24px,#fbbf24 24px,#fbbf24 48px);font-family:Menco,system-ui">
-<form action="studynotes://save" style="background:#fff;border-radius:24px;padding:40px 44px;width:460px;box-shadow:0 30px 80px rgba(0,0,0,.25)">
+    encodeURIComponent(`<style>${fontCss()}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(45deg,#facc15,#facc15 24px,#fbbf24 24px,#fbbf24 48px);font-family:Menco,system-ui}
+  form{background:#3b82f6;border:4px solid #60a5fa;border-radius:24px;padding:36px 40px;width:460px;box-shadow:0 30px 80px rgba(0,0,0,.25);color:#fff}
+  h1{font-size:26px;margin:8px 0 4px;font-weight:700}
+  p{color:rgba(255,255,255,.85);margin:0 0 18px;font-size:14px;line-height:1.5}
+  label{font-size:14px;font-weight:600}
+  select,input{width:100%;padding:12px;margin:6px 0 14px;border-radius:8px;border:0;font-size:15px;font-family:Menco,system-ui;box-sizing:border-box;background:#fff;color:#000}
+  a{color:#fff}
+  button{width:100%;padding:13px;border:0;border-radius:8px;background:#22c55e;color:#000;font-weight:700;font-size:16px;cursor:pointer;font-family:Menco,system-ui}
+  .skip{display:block;text-align:center;margin-top:12px;font-size:13px;color:rgba(255,255,255,.75)}
+  .getkey{font-size:12px;float:right}
+</style><body>
+<form action="studynotes://save">
   <div style="font-size:40px">&#128218;</div>
-  <h1 style="font-size:24px;margin:10px 0 4px">Connect an AI</h1>
-  <p style="color:#555;margin:0 0 20px;font-size:14px">One key powers your tutor. Typical cost: about $1/month of daily studying. Your key stays on this computer.</p>
-  <label style="font-size:13px;font-weight:600">Provider</label><br>
-  <select name="provider" id="prov" style="width:100%;padding:10px;margin:6px 0 14px;border-radius:10px;border:1px solid #ddd;font-size:14px">${options}</select><br>
-  <div id="keyrow"><label style="font-size:13px;font-weight:600">API key</label>
-  <a id="geturl" href="https://openrouter.ai/keys" target="_blank" style="font-size:12px;float:right">Get a free key &rarr;</a><br>
-  <input name="key" id="key" type="password" placeholder="sk-..." style="width:100%;padding:10px;margin:6px 0 14px;border-radius:10px;border:1px solid #ddd;font-size:14px;box-sizing:border-box"></div>
-  <div id="urlrow" style="display:none"><label style="font-size:13px;font-weight:600">Base URL</label><br>
-  <input name="baseUrl" id="baseUrl" placeholder="http://localhost:11434/v1" style="width:100%;padding:10px;margin:6px 0 14px;border-radius:10px;border:1px solid #ddd;font-size:14px;box-sizing:border-box"></div>
-  <button style="width:100%;padding:13px;border:0;border-radius:12px;background:#a3e635;font-weight:700;font-size:15px;cursor:pointer">Start studying</button>
-  <a href="studynotes://skip" style="display:block;text-align:center;margin-top:12px;font-size:13px;color:#888">Skip for now</a>
+  <h1>Connect an AI</h1>
+  <p>One key powers your tutor. Typical cost: about $1/month of daily studying. Your key stays on this computer.</p>
+  <label>Provider</label><br>
+  <select name="provider" id="prov">${options}</select><br>
+  <div id="keyrow"><label>API key</label>
+  <a id="geturl" href="https://openrouter.ai/keys" target="_blank" class="getkey">Get a free key &rarr;</a><br>
+  <input name="key" id="key" type="password" placeholder="sk-..."></div>
+  <div id="urlrow" style="display:none"><label>Base URL</label><br>
+  <input name="baseUrl" id="baseUrl" placeholder="http://localhost:11434/v1"></div>
+  <button>Start studying</button>
+  <a href="studynotes://skip" class="skip">Skip for now</a>
 </form>
 <script>
   const urls = ${keyUrls};

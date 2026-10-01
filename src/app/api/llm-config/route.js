@@ -21,7 +21,13 @@ export async function GET() {
       providers: Object.fromEntries(
         Object.entries(PROVIDERS).map(([id, p]) => [
           id,
-          { label: p.label, keyUrl: p.keyUrl || null, keyless: Boolean(p.keyless), defaults: p.defaults },
+          {
+            label: p.label,
+            keyUrl: p.keyUrl || null,
+            keyless: Boolean(p.keyless),
+            defaults: p.defaults,
+            choices: p.choices || null,
+          },
         ]),
       ),
     };
