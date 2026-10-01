@@ -26,8 +26,14 @@ function loadConfig() {
 }
 
 function saveConfig(config) {
-  fs.mkdirSync(configDir, { recursive: true });
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  // The file holds an API key: owner-only on platforms with POSIX modes.
+  fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { mode: 0o600 });
+  try {
+    fs.chmodSync(configPath, 0o600);
+  } catch {
+    /* Windows ACLs: mode is a no-op there */
+  }
 }
 
 function ask(question) {
