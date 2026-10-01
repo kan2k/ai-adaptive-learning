@@ -324,14 +324,22 @@ const tutorAgentTools = {
           .enum(["EASY", "HARD"])
           .describe("The difficulty level of the question ('EASY' or 'HARD')"),
       }),
+      // Optional with a fallback: budget models (deepseek-class) often omit
+      // decorative fields, and a missing greeting must never reject the
+      // whole question.
       message: z
         .string()
+        .optional()
         .describe(
           "A friendly, encouraging message for the student to be displayed.",
         ),
     }),
     execute: async ({ courseId, originalQuestion, enhancedQuestion, message }) => {
-      setNextQuestion(courseId, { originalQuestion, enhancedQuestion, message });
+      setNextQuestion(courseId, {
+        originalQuestion,
+        enhancedQuestion,
+        message: message || "Here's your next question — you've got this.",
+      });
       return {
         success: true,
         question: enhancedQuestion.question,
