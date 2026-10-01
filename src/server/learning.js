@@ -113,6 +113,27 @@ export function getAllConcepts(courseId) {
   return Array.from(concepts);
 }
 
+// Resolves a concept title back to the file (and markdown heading) its
+// metadata extraction came from, so questions and flashcards can cite it.
+export function findConceptSource(courseId, conceptTitle) {
+  if (!conceptTitle) return null;
+  const courseWithFiles = getCourseWithFiles(courseId);
+  if (!courseWithFiles) return null;
+  const target = conceptTitle.toLowerCase().trim();
+  for (const file of courseWithFiles.files) {
+    for (const concept of file.metadata?.concepts || []) {
+      if ((concept.title || "").toLowerCase().trim() === target) {
+        return {
+          fileId: file._id,
+          fileName: file.name,
+          heading: concept.sourceHeading,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 export function setNextQuestion(courseId, { originalQuestion, enhancedQuestion, message }) {
   const course = getCourse(courseId);
   if (!course) throw new Error("Course not found");
@@ -122,6 +143,9 @@ export function setNextQuestion(courseId, { originalQuestion, enhancedQuestion, 
       originalQuestion,
       enhancedQuestion,
       message,
+      source:
+        findConceptSource(courseId, enhancedQuestion?.conceptCovered) ||
+        undefined,
       createdAt: Date.now(),
     },
   });

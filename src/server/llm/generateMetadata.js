@@ -76,6 +76,29 @@ const conceptSchema = z.object({
     .describe("Array of distinct concepts extracted from this file"),
 });
 
+// For markdown sources, each concept records the nearest # heading above the
+// place its reference quote appears; a concept whose quote can't be located
+// keeps file-name-only attribution.
+const lastHeadingBefore = (text, offset) => {
+  const matches = text.slice(0, offset).match(/^#{1,6}[ \t].*$/gm);
+  if (!matches || matches.length === 0) return undefined;
+  return matches[matches.length - 1].replace(/^#{1,6}[ \t]+/, "").trim();
+};
+
+const annotateConceptHeadings = (file, concepts) => {
+  if (!file.type?.includes("markdown") || !file.textContent) return concepts;
+  return concepts.map((concept) => {
+    const ref = (concept.reference || "").trim();
+    let idx = ref ? file.textContent.indexOf(ref) : -1;
+    if (idx < 0 && ref.length > 40) {
+      idx = file.textContent.indexOf(ref.slice(0, 40));
+    }
+    if (idx < 0) return concept;
+    const heading = lastHeadingBefore(file.textContent, idx);
+    return heading ? { ...concept, sourceHeading: heading } : concept;
+  });
+};
+
 const MAX_CHUNK_SIZE = 20000;
 const CHUNK_OVERLAP = 1000;
 const CONCURRENT_BATCH_SIZE = 15;
@@ -233,7 +256,10 @@ export async function generateMetadataFromText(fileId) {
         author: result.fileMetadata.author || "Unknown",
         description:
           result.fileMetadata.description || "Content analysis completed",
-        concepts: Array.isArray(result.concepts) ? result.concepts : [],
+        concepts: annotateConceptHeadings(
+          file,
+          Array.isArray(result.concepts) ? result.concepts : [],
+        ),
         generatedAt: Date.now(),
         status: "success",
       });
@@ -281,7 +307,7 @@ export async function generateMetadataFromText(fileId) {
       relatedArea: mergedFileMetadata.relatedArea,
       author: mergedFileMetadata.author,
       description: mergedFileMetadata.description,
-      concepts: mergedConcepts,
+      concepts: annotateConceptHeadings(file, mergedConcepts),
       generatedAt: Date.now(),
       status: "success",
     });

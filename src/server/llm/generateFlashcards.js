@@ -190,6 +190,7 @@ export async function generateFlashcards(courseId) {
     for (const file of courseWithFiles.files) {
       if (file.metadata && file.metadata.concepts) {
         courseMaterials.push({
+          fileId: file._id,
           fileName: file.name,
           relatedArea: file.metadata.relatedArea,
           author: file.metadata.author,
@@ -207,6 +208,9 @@ export async function generateFlashcards(courseId) {
     }
 
     const allConcepts = [];
+    // Generated cards cite their source by matching conceptTitle back to the
+    // extracted concept's file and heading.
+    const conceptSources = new Map();
     for (const material of courseMaterials) {
       for (const concept of material.concepts) {
         allConcepts.push({
@@ -215,8 +219,17 @@ export async function generateFlashcards(courseId) {
           relatedArea: material.relatedArea,
           author: material.author,
         });
+        const key = (concept.title || "").toLowerCase().trim();
+        if (key && !conceptSources.has(key)) {
+          conceptSources.set(key, {
+            fileId: material.fileId,
+            heading: concept.sourceHeading,
+          });
+        }
       }
     }
+    const sourceFor = (conceptTitle) =>
+      conceptSources.get((conceptTitle || "").toLowerCase().trim());
 
     if (allConcepts.length <= CONCEPTS_PER_CHUNK) {
       const materialsContent = courseMaterials
@@ -270,6 +283,8 @@ Return the response in the specified JSON format with the generated memory text 
           suggestionImage: flashcard.flashcardImageDescription,
           flashCardText: flashcard.flashcardContent,
           generationType: "pre-generated",
+          sourceFileId: sourceFor(flashcard.conceptTitle)?.fileId,
+          sourceHeading: sourceFor(flashcard.conceptTitle)?.heading,
         }));
         replaceFlashcards(courseId, flashcardsToAdd);
       }
@@ -318,6 +333,8 @@ Return the response in the specified JSON format with the generated memory text 
         suggestionImage: flashcard.flashcardImageDescription,
         flashCardText: flashcard.flashcardContent,
         generationType: "pre-generated",
+        sourceFileId: sourceFor(flashcard.conceptTitle)?.fileId,
+        sourceHeading: sourceFor(flashcard.conceptTitle)?.heading,
       }));
       replaceFlashcards(courseId, flashcardsToAdd);
     }

@@ -16,6 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { DotPattern } from "./magicui/dot-pattern";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
+import { SourceChip } from "./SourceChip";
 
 export const Quiz = ({ courseId, nextQuestionData, answerQuestion, user }) => {
   const [questionStyle, setQuestionStyle] = useState("enhanced"); // 'original' or 'enhanced'
@@ -305,6 +306,12 @@ export const Quiz = ({ courseId, nextQuestionData, answerQuestion, user }) => {
                 );
               })()}
             </div>
+            {currentQuestion.question && nextQuestionData?.source && (
+              <SourceChip
+                file={nextQuestionData.source.fileName}
+                heading={nextQuestionData.source.heading}
+              />
+            )}
           </div>
           <div className="flex flex-col gap-2">
             {answeredWrong && (explanation || isExplaining) && (

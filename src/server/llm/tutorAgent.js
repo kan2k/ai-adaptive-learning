@@ -20,6 +20,7 @@ import {
   setNextQuestion,
   getFlashcardsByCourse,
   addFlashcards,
+  findConceptSource,
 } from "../learning.js";
 import { generateKnowledgeGraph } from "./generateKnowledgeGraph.js";
 import { ensureMetadataForCourse } from "./generateMetadata.js";
@@ -196,13 +197,18 @@ const tutorAgentTools = {
         .describe("Array of flashcards to create"),
     }),
     execute: async ({ courseId, flashcards }) => {
-      const flashcardsToAdd = flashcards.map((flashcard) => ({
-        conceptTitle: flashcard.conceptTitle,
-        relatedArea: flashcard.conceptTitle,
-        suggestionImage: flashcard.flashcardImageDescription,
-        flashCardText: flashcard.flashcardContent,
-        generationType: "struggle",
-      }));
+      const flashcardsToAdd = flashcards.map((flashcard) => {
+        const source = findConceptSource(courseId, flashcard.conceptTitle);
+        return {
+          conceptTitle: flashcard.conceptTitle,
+          relatedArea: flashcard.conceptTitle,
+          suggestionImage: flashcard.flashcardImageDescription,
+          flashCardText: flashcard.flashcardContent,
+          generationType: "struggle",
+          sourceFileId: source?.fileId,
+          sourceHeading: source?.heading,
+        };
+      });
       addFlashcards(courseId, flashcardsToAdd);
       return {
         success: true,
