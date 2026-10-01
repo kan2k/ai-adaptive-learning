@@ -3,7 +3,33 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { wrapLanguageModel } from "ai";
+import fs from "fs";
+import os from "os";
+import path from "path";
 import { log } from "../log.js";
+
+// Shared, live-editable config (gear icon, Electron first run, npx prompt
+// all write here). File values win over env so in-app edits apply without
+// a restart.
+export const LLM_CONFIG_PATH = path.join(os.homedir(), ".config", "ai-adaptive-learning.json");
+
+export function readLLMFile() {
+  try {
+    return JSON.parse(fs.readFileSync(LLM_CONFIG_PATH, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+export function writeLLMFile(cfg) {
+  fs.mkdirSync(path.dirname(LLM_CONFIG_PATH), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(LLM_CONFIG_PATH, JSON.stringify(cfg, null, 2), { mode: 0o600 });
+  try {
+    fs.chmodSync(LLM_CONFIG_PATH, 0o600);
+  } catch {
+    /* Windows ACLs */
+  }
+}
 
 // Provider strategy (the LibreChat/Open WebUI pattern): a few native
 // presets plus "any OpenAI-compatible base URL", which covers nearly every
@@ -90,29 +116,35 @@ export class MissingApiKeyError extends Error {
 }
 
 export function getLLMConfig() {
+  const file = readLLMFile();
   // Back-compat: the original env contract was OpenRouter/Ollama only.
-  let provider = process.env.LLM_PROVIDER;
+  let provider = file.provider || process.env.LLM_PROVIDER;
   if (!provider) {
     if (process.env.OLLAMA_BASE_URL) provider = "ollama";
     else provider = "openrouter";
   }
   const preset = PROVIDERS[provider] || PROVIDERS.custom;
   const apiKey =
+    file.apiKey ||
+    file.openrouterApiKey ||
     process.env.LLM_API_KEY ||
     process.env.OPENROUTER_API_KEY ||
     (preset.keyless ? "ollama" : undefined);
   const baseURL =
+    file.baseUrl ||
     process.env.LLM_BASE_URL ||
     (provider === "ollama" && process.env.OLLAMA_BASE_URL
       ? `${process.env.OLLAMA_BASE_URL.replace(/\/$/, "")}/v1`
       : preset.baseURL);
   const models = {
     fast:
+      file.modelFast ||
       process.env.LLM_MODEL_FAST ||
       process.env.OPENROUTER_MODEL_FAST ||
       (provider === "ollama" && process.env.OLLAMA_MODEL) ||
       preset.defaults.fast,
     smart:
+      file.modelSmart ||
       process.env.LLM_MODEL_SMART ||
       process.env.OPENROUTER_MODEL_SMART ||
       (provider === "ollama" && process.env.OLLAMA_MODEL) ||

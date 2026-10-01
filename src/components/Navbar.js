@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Book, Check, ChevronDownIcon, PlusIcon, Settings } from "lucide-react";
 import { Preferences } from "./Preferences";
+import { LLMSettings } from "./LLMSettings";
 import {
   Dialog,
   DialogContent,
@@ -135,6 +136,28 @@ export function Navbar({
             </DialogContent>
           </Dialog>
         </div>
+
+        <Dialog>
+          <DialogTrigger asChild>
+            <button
+              title="AI settings"
+              className="bg-white p-2 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors hover:cursor-pointer mt-0.5"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          </DialogTrigger>
+          <DialogContent className="w-full min-w-[560px] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="flex flex-row gap-2 justify-between items-center">
+                <div className="text-2xl font-bold">AI Settings</div>
+                <DialogClose asChild>
+                  <X className="size-6 hover:cursor-pointer hover:scale-105" />
+                </DialogClose>
+              </DialogTitle>
+            </DialogHeader>
+            <LLMSettings />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -56,6 +56,20 @@ const SETUP_PROVIDERS = [
   ["custom", "Custom OpenAI-compatible endpoint", ""],
 ];
 
+let fontCssCache = null;
+function fontCss() {
+  if (fontCssCache !== null) return fontCssCache;
+  try {
+    const dir = path.join(path.dirname(serverPath), "public", "fonts", "Menco");
+    const med = fs.readFileSync(path.join(dir, "Menco-Medium.otf")).toString("base64");
+    const bold = fs.readFileSync(path.join(dir, "Menco-Bold.otf")).toString("base64");
+    fontCssCache = `@font-face{font-family:Menco;src:url(data:font/otf;base64,${med}) format("opentype");font-weight:400}@font-face{font-family:Menco;src:url(data:font/otf;base64,${bold}) format("opentype");font-weight:700}`;
+  } catch {
+    fontCssCache = "";
+  }
+  return fontCssCache;
+}
+
 function setupPage() {
   const options = SETUP_PROVIDERS.map(
     ([id, label]) => `<option value="${id}">${label}</option>`,
@@ -63,7 +77,7 @@ function setupPage() {
   const keyUrls = JSON.stringify(Object.fromEntries(SETUP_PROVIDERS.map(([id, , u]) => [id, u])));
   return (
     "data:text/html;charset=utf-8," +
-    encodeURIComponent(`<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(45deg,#facc15,#facc15 24px,#fbbf24 24px,#fbbf24 48px);font-family:system-ui">
+    encodeURIComponent(`<style>${fontCss()}</style><body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(45deg,#facc15,#facc15 24px,#fbbf24 24px,#fbbf24 48px);font-family:Menco,system-ui">
 <form action="studynotes://save" style="background:#fff;border-radius:24px;padding:40px 44px;width:460px;box-shadow:0 30px 80px rgba(0,0,0,.25)">
   <div style="font-size:40px">&#128218;</div>
   <h1 style="font-size:24px;margin:10px 0 4px">Connect an AI</h1>
@@ -189,7 +203,7 @@ app.whenReady().then(async () => {
     win.loadURL(
       "data:text/html;charset=utf-8," +
         encodeURIComponent(
-          `<body style="margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:repeating-linear-gradient(45deg,#facc15,#facc15 24px,#fbbf24 24px,#fbbf24 48px);font-family:system-ui"><div style="font-size:64px">&#128218;</div><div style="font-size:22px;font-weight:700;color:#422006">Warming up your study space&hellip;</div></body>`,
+          `<style>${fontCss()}</style><body style="margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:repeating-linear-gradient(45deg,#facc15,#facc15 24px,#fbbf24 24px,#fbbf24 48px);font-family:Menco,system-ui"><div style="font-size:64px">&#128218;</div><div style="font-size:22px;font-weight:700;color:#422006">Warming up your study space&hellip;</div></body>`,
         ),
     );
 
@@ -198,7 +212,7 @@ app.whenReady().then(async () => {
       win.loadURL(
         "data:text/html;charset=utf-8," +
           encodeURIComponent(
-            `<body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#facc15;font-family:system-ui;font-size:20px;font-weight:700;color:#422006">Warming up your study space&hellip;</body>`,
+            `<style>${fontCss()}</style><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#facc15;font-family:Menco,system-ui;font-size:20px;font-weight:700;color:#422006">Warming up your study space&hellip;</body>`,
           ),
       );
     }
