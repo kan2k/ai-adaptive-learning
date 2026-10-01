@@ -4,6 +4,20 @@ import { z } from "zod";
 import { getModel } from "./providers.js";
 import { getCourseWithFiles, mergeLearningData } from "../db.js";
 
+// The schema allows the model to omit optional fields; consumers must never
+// see them missing. Every node leaves here with keyTerms/children arrays.
+function normalizeGraph(graph) {
+  return {
+    ...graph,
+    nodes: (graph?.nodes ?? []).map((node) => ({
+      ...node,
+      keyTerms: Array.isArray(node.keyTerms) ? node.keyTerms : [],
+      children: Array.isArray(node.children) ? node.children : [],
+      parent: node.parent ?? null,
+    })),
+  };
+}
+
 const KnowledgeGraphSchema = z.object({
   nodes: z.array(
     z.object({
@@ -150,7 +164,7 @@ Return the response in the specified JSON format with the new knowledge graph no
         temperature: 0.3,
       });
 
-      return result.object;
+      return normalizeGraph(result.object);
     } catch (aiError) {
       retryCount++;
       logError("llm", aiError, { where: `AI analysis attempt ${retryCount} failed for chunk ${chunkIndex}:` });
@@ -232,8 +246,9 @@ export async function generateKnowledgeGraph(courseId) {
         temperature: 0.3,
       });
 
-      mergeLearningData(courseId, { knowledgeGraph: object });
-      return { success: true, knowledgeGraph: object };
+      const graph = normalizeGraph(object);
+      mergeLearningData(courseId, { knowledgeGraph: graph });
+      return { success: true, knowledgeGraph: graph };
     }
 
     const chunks = splitConceptsIntoChunks(allConcepts, CONCEPTS_PER_CHUNK);

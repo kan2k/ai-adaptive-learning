@@ -732,7 +732,7 @@ function NodeContent({
           {node.title}
         </div>
         <div className="flex flex-wrap gap-1 justify-center">
-          {node.keyTerms.map((term) => (
+          {(node.keyTerms ?? []).map((term) => (
             <div
               key={term}
               className={cn(
