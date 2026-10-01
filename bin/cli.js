@@ -108,8 +108,9 @@ const child = spawn(process.execPath, [server], {
   env: {
     ...process.env,
     STUDY_DIR: studyDir,
-    NODE_PATH: path.join(pkgRoot, "standalone", "nmodules"),
-    ...(key ? { OPENROUTER_API_KEY: key } : {}),
+    ...(provider ? { LLM_PROVIDER: provider } : {}),
+    ...(key ? { LLM_API_KEY: key } : {}),
+    ...(baseUrl ? { LLM_BASE_URL: baseUrl } : {}),
     ...(ollama ? { OLLAMA_BASE_URL: ollama } : {}),
     PORT: String(port),
     HOSTNAME: "127.0.0.1",
