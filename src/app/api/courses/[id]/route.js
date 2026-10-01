@@ -85,6 +85,7 @@ export async function DELETE(request, { params }) {
       }
     }
 
+    db.prepare("DELETE FROM flashcards WHERE course_id = ?").run(row.id);
     db.prepare("DELETE FROM files WHERE course_id = ?").run(row.id);
     db.prepare("DELETE FROM courses WHERE id = ?").run(row.id);
 

@@ -78,8 +78,73 @@ function openDb() {
       id INTEGER PRIMARY KEY CHECK (id = 1),
       data TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS flashcards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL REFERENCES courses(id),
+      concept_title TEXT NOT NULL,
+      related_area TEXT,
+      text TEXT NOT NULL,
+      suggestion_image TEXT,
+      source_file_id INTEGER,
+      source_heading TEXT,
+      created_at INTEGER NOT NULL,
+      generation_type TEXT,
+      due INTEGER NOT NULL,
+      stability REAL NOT NULL DEFAULT 0,
+      difficulty REAL NOT NULL DEFAULT 0,
+      reps INTEGER NOT NULL DEFAULT 0,
+      lapses INTEGER NOT NULL DEFAULT 0,
+      state INTEGER NOT NULL DEFAULT 0,
+      last_review INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_flashcards_course_due ON flashcards(course_id, due);
   `);
+  migrateFlashcardsFromLearningData(db);
   return db;
+}
+
+// Flashcards used to live inside courses.learning_data JSON. Move them into
+// the flashcards table as new FSRS cards due now, then strip the JSON key —
+// stripping it is what makes a re-run a no-op.
+function migrateFlashcardsFromLearningData(db) {
+  const rows = db
+    .prepare(
+      "SELECT id, learning_data FROM courses WHERE learning_data LIKE '%\"flashcards\"%'",
+    )
+    .all();
+  if (rows.length === 0) return;
+  const insert = db.prepare(
+    `INSERT INTO flashcards (course_id, concept_title, related_area, text, suggestion_image, created_at, generation_type, due)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const update = db.prepare("UPDATE courses SET learning_data = ? WHERE id = ?");
+  const now = Date.now();
+  db.transaction(() => {
+    for (const row of rows) {
+      let data;
+      try {
+        data = JSON.parse(row.learning_data);
+      } catch {
+        continue;
+      }
+      if (!data || !Array.isArray(data.flashcards)) continue;
+      for (const card of data.flashcards) {
+        if (!card || typeof card.flashCardText !== "string") continue;
+        insert.run(
+          row.id,
+          card.conceptTitle || "Untitled concept",
+          card.relatedArea || null,
+          card.flashCardText,
+          card.suggestionImage || null,
+          card.createdAt || now,
+          card.generationType || "pre-generated",
+          now,
+        );
+      }
+      delete data.flashcards;
+      update.run(JSON.stringify(data), row.id);
+    }
+  })();
 }
 
 export function getDb() {
@@ -370,4 +435,132 @@ export function updateMessageContent(messageId, content) {
   getDb()
     .prepare("UPDATE chat_messages SET content = ? WHERE id = ?")
     .run(content, Number(messageId));
+}
+
+// --- flashcards (FSRS-scheduled) ---
+
+export function rowToFlashcard(row) {
+  if (!row) return null;
+  return {
+    _id: row.id,
+    courseId: row.course_id,
+    conceptTitle: row.concept_title,
+    relatedArea: row.related_area ?? undefined,
+    flashCardText: row.text,
+    suggestionImage: row.suggestion_image ?? undefined,
+    sourceFileId: row.source_file_id ?? undefined,
+    sourceFile: row.source_file_name ?? undefined,
+    sourceHeading: row.source_heading ?? undefined,
+    createdAt: row.created_at,
+    generationType: row.generation_type ?? undefined,
+    due: row.due,
+    stability: row.stability,
+    difficulty: row.difficulty,
+    reps: row.reps,
+    lapses: row.lapses,
+    state: row.state,
+    lastReview: row.last_review ?? undefined,
+  };
+}
+
+const FLASHCARD_SELECT = `
+  SELECT flashcards.*, files.name AS source_file_name
+  FROM flashcards LEFT JOIN files ON files.id = flashcards.source_file_id
+`;
+
+export function listFlashcards(courseId) {
+  const rows = getDb()
+    .prepare(`${FLASHCARD_SELECT} WHERE course_id = ? ORDER BY flashcards.created_at ASC, flashcards.id ASC`)
+    .all(Number(courseId));
+  return rows.map(rowToFlashcard);
+}
+
+export function getFlashcardById(cardId) {
+  const row = getDb()
+    .prepare(`${FLASHCARD_SELECT} WHERE flashcards.id = ?`)
+    .get(Number(cardId));
+  return rowToFlashcard(row);
+}
+
+// New cards enter with the FSRS empty-card state (all zeros) and due = now,
+// so they surface in the next review queue immediately.
+export function insertFlashcards(courseId, cards) {
+  const db = getDb();
+  const insert = db.prepare(
+    `INSERT INTO flashcards (course_id, concept_title, related_area, text, suggestion_image, source_file_id, source_heading, created_at, generation_type, due)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const now = Date.now();
+  const inserted = db.transaction(() => {
+    let count = 0;
+    for (const card of cards) {
+      insert.run(
+        Number(courseId),
+        card.conceptTitle || "Untitled concept",
+        card.relatedArea || null,
+        card.flashCardText || "",
+        card.suggestionImage || null,
+        card.sourceFileId != null ? Number(card.sourceFileId) : null,
+        card.sourceHeading || null,
+        now,
+        card.generationType || "pre-generated",
+        now,
+      );
+      count++;
+    }
+    return count;
+  })();
+  return inserted;
+}
+
+export function updateFlashcardReview(cardId, next) {
+  getDb()
+    .prepare(
+      `UPDATE flashcards
+       SET due = ?, stability = ?, difficulty = ?, reps = ?, lapses = ?, state = ?, last_review = ?
+       WHERE id = ?`,
+    )
+    .run(
+      next.due,
+      next.stability,
+      next.difficulty,
+      next.reps,
+      next.lapses,
+      next.state,
+      next.lastReview,
+      Number(cardId),
+    );
+  return getFlashcardById(cardId);
+}
+
+export function getDueFlashcards(courseId, now = Date.now()) {
+  const rows = getDb()
+    .prepare(`${FLASHCARD_SELECT} WHERE course_id = ? AND due <= ? ORDER BY due ASC`)
+    .all(Number(courseId), now);
+  return rows.map(rowToFlashcard);
+}
+
+export function getReviewCounts(courseId, now = new Date()) {
+  const db = getDb();
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+  const count = (sql, ...params) =>
+    db.prepare(sql).get(Number(courseId), ...params).n;
+  return {
+    dueNow: count(
+      "SELECT COUNT(*) n FROM flashcards WHERE course_id = ? AND due <= ?",
+      now.getTime(),
+    ),
+    dueToday: count(
+      "SELECT COUNT(*) n FROM flashcards WHERE course_id = ? AND due <= ?",
+      endOfDay.getTime(),
+    ),
+    total: count("SELECT COUNT(*) n FROM flashcards WHERE course_id = ?"),
+  };
+}
+
+export function deleteFlashcardsByCourse(courseId) {
+  getDb()
+    .prepare("DELETE FROM flashcards WHERE course_id = ?")
+    .run(Number(courseId));
 }

@@ -2,6 +2,8 @@ import {
   getCourse,
   getCourseWithFiles,
   mergeLearningData,
+  listFlashcards,
+  insertFlashcards,
 } from "./db.js";
 
 export function setStudentProgress(courseId, conceptKey, updates) {
@@ -15,7 +17,6 @@ export function setStudentProgress(courseId, conceptKey, updates) {
     mastery: "beginner",
     mistakes: 0,
     difficulty: "easy",
-    needsReview: false,
     questionsCorrect: 0,
     questionsTotal: 0,
     percentage: 0,
@@ -83,7 +84,6 @@ export function initializeStudentProgress(courseId) {
         mastery: "beginner",
         mistakes: 0,
         difficulty: "easy",
-        needsReview: false,
         questionsCorrect: 0,
         questionsTotal: 0,
         percentage: 0,
@@ -130,31 +130,31 @@ export function setNextQuestion(courseId, { originalQuestion, enhancedQuestion, 
 export function getFlashcardsByCourse(courseId) {
   const course = getCourse(courseId);
   if (!course) return [];
-  return course.learningData?.flashcards || [];
+  return listFlashcards(courseId);
 }
 
 export function addFlashcards(courseId, flashcards) {
   const course = getCourse(courseId);
   if (!course) throw new Error("Course not found");
 
-  const newFlashcards = flashcards.map((f) => ({ ...f, createdAt: Date.now() }));
-  const existingFlashcards = course.learningData?.flashcards || [];
-
-  mergeLearningData(courseId, {
-    flashcards: [...existingFlashcards, ...newFlashcards],
-  });
-
-  return { success: true, count: newFlashcards.length };
+  const count = insertFlashcards(courseId, flashcards);
+  return { success: true, count };
 }
 
+// Pre-generation runs on every course start; cards whose concept already has
+// one keep their FSRS review state instead of being wiped and re-inserted.
 export function replaceFlashcards(courseId, flashcards) {
   const course = getCourse(courseId);
   if (!course) throw new Error("Course not found");
 
-  const newFlashcards = flashcards.map((f) => ({ ...f, createdAt: Date.now() }));
-  mergeLearningData(courseId, { flashcards: newFlashcards });
-
-  return { success: true, count: newFlashcards.length };
+  const existingConcepts = new Set(
+    listFlashcards(courseId).map((c) => c.conceptTitle.toLowerCase().trim()),
+  );
+  const fresh = flashcards.filter(
+    (f) => !existingConcepts.has((f.conceptTitle || "").toLowerCase().trim()),
+  );
+  const count = fresh.length > 0 ? insertFlashcards(courseId, fresh) : 0;
+  return { success: true, count };
 }
 
 export function getLearningData(courseId) {
@@ -164,7 +164,7 @@ export function getLearningData(courseId) {
   return {
     nextQuestion: learningData.nextQuestion || null,
     studentProgress: learningData.studentProgress || {},
-    flashcards: learningData.flashcards || [],
+    flashcards: listFlashcards(courseId),
     knowledgeGraph: learningData.knowledgeGraph || null,
   };
 }

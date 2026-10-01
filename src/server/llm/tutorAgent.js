@@ -87,7 +87,7 @@ Here are the definitions for each preference option:
 - Review your conversation history to identify concepts that need review based on past student mistakes and performance patterns
 - ALWAYS start with EASY questions for new concepts
 - Move to HARD questions right ONLY when the student gets a correct answer on easy questions for that concept to evaluate if the student has mastered the concept
-- For concepts needing review: Ask EASY questions first to rebuild confidence, then gradually increase difficulty
+- For concepts the student has struggled with: ask EASY questions first to rebuild confidence, then gradually increase difficulty
 - NEVER ask the same question twice.
 - Move through different concepts systematically. Progress through materials in a logical learning sequence. The teaching order should make sure prerequisite concepts are taught before the dependent concepts.
 - ALWAYS use the setNextQuestion tool to store the next question in the course database for the frontend to display.
@@ -106,6 +106,7 @@ To avoid student finding patterns in correct answer generation, follow these rul
 - Use addFlashcards tool IMMEDIATELY when a concept reaches 2 mistakes
 - Check existing flashcards using getFlashcards tool to avoid duplicates
 - Flashcards should focus on the specific area where the student is struggling
+- You only create card content; the app's spaced-repetition scheduler decides when cards come up for review
 </flashcard_generation>
 
 <student_progress_tracking>
@@ -115,24 +116,14 @@ To avoid student finding patterns in correct answer generation, follow these rul
   * mastery: "beginner" | "intermediate" | "advanced"
   * mistakes: number of mistakes made
   * difficulty: "easy" | "hard" (current question difficulty level)
-  * needsReview: boolean indicating if concept needs spaced repetition
   * lastMistakeAt: timestamp of last mistake
   * questionsCorrect: number of correct answers
   * questionsTotal: total questions asked
   * percentage: 0-100 YOUR confidence assessment of how likely the student is to answer correctly on this concept (NOT just accuracy - consider understanding patterns, response quality, confidence indicators)
   * observation: long-term learning journal that accumulates insights about the student's progress (append new observations, don't replace)
-- Analyze your conversation history to implement spaced repetition by identifying concepts where the student made mistakes
+- Analyze your conversation history to identify concepts where the student made mistakes
 - Use the observation field to build a comprehensive understanding of each student's learning journey and patterns
 </student_progress_tracking>
-
-<adaptive_learning_and_spaced_repetition>
-- After a student gets a question wrong, DO NOT immediately re-ask about that concept
-- Instead, ask 1 to 3 EASY questions on other well-understood concepts to rebuild confidence
-- Then return to the struggling concept with an EASY question (not the same question they got wrong)
-- For concepts with 2+ mistakes: Generate flashcards and schedule for spaced repetition
-- Use mistake tracking to identify patterns and adjust teaching approach
-- Gradually increase difficulty only after consistent success on easier questions
-</adaptive_learning_and_spaced_repetition>
 
 <interaction_with_student>
 - Generate encouraging messages that acknowledge both correct answers and learning from mistakes
@@ -167,7 +158,7 @@ setNextQuestion tool.
 <tool_use>
 - ALWAYS use tools before generating a question
 - proactively use tools to track student progress and performance
-- proactively use tools to generate flashcards when concepts have 2+ mistakes and schedule for spaced repetition
+- proactively use tools to generate flashcards when concepts have 2+ mistakes
 - ALWAYS use setNextQuestion tool to store the next question for the student - this is required for the frontend to display the question
 - Use setStudentProgress to update percentage based on your assessment of student confidence/understanding (not just correctness)
 - Add meaningful observations that capture learning patterns, struggles, breakthroughs, and teaching insights for each concept
@@ -210,7 +201,7 @@ const tutorAgentTools = {
         relatedArea: flashcard.conceptTitle,
         suggestionImage: flashcard.flashcardImageDescription,
         flashCardText: flashcard.flashcardContent,
-        generationType: "pre-generated",
+        generationType: "struggle",
       }));
       addFlashcards(courseId, flashcardsToAdd);
       return {
@@ -254,10 +245,6 @@ const tutorAgentTools = {
             .enum(["easy", "hard"])
             .optional()
             .describe("Current difficulty level for questions on this concept"),
-          needsReview: z
-            .boolean()
-            .optional()
-            .describe("Whether this concept needs review/spaced repetition"),
           lastMistakeAt: z
             .number()
             .nullable()

@@ -1,5 +1,5 @@
 import { handle, httpError } from "@/server/http";
-import { getCourse, updateCourse } from "@/server/db";
+import { getCourse, updateCourse, deleteFlashcardsByCourse } from "@/server/db";
 
 export async function POST(request, { params }) {
   const { id } = await params;
@@ -7,6 +7,7 @@ export async function POST(request, { params }) {
     const course = getCourse(id);
     if (!course) throw httpError("Course not found", 404);
     updateCourse(id, { learningData: {} });
+    deleteFlashcardsByCourse(id);
     return { success: true };
   });
 }

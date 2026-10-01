@@ -512,7 +512,10 @@ export default function Page() {
                           value="flashcards"
                           className="h-full overflow-hidden"
                         >
-                          <Flashcard flashcards={flashcards} />
+                          <Flashcard
+                            flashcards={flashcards}
+                            courseId={selectedCourse?._id}
+                          />
                         </TabsContent>
                         <TabsContent
                           value="quiz"
