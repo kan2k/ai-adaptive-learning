@@ -5,6 +5,7 @@ import {
   ensureStudyDir,
   STUDY_DIR,
 } from "./db.js";
+import { ensureMetadataForCourse } from "./llm/generateMetadata.js";
 
 const INDEXABLE = new Set([".md", ".txt", ".pdf"]);
 const ROOT_COURSE_NAME = "Notes";
@@ -152,6 +153,10 @@ async function indexFile(filePath) {
       text,
     );
   }
+  // Concepts generate as soon as a file is indexed, so "Begin course" is
+  // usually ready by the time a human reaches it (no-op without an LLM key;
+  // in-flight guard makes repeat calls cheap).
+  ensureMetadataForCourse(courseId);
 }
 
 function removeMissing(presentPaths) {

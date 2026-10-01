@@ -21,6 +21,7 @@ import {
   addFlashcards,
 } from "../learning.js";
 import { generateKnowledgeGraph } from "./generateKnowledgeGraph.js";
+import { ensureMetadataForCourse } from "./generateMetadata.js";
 import { generateFlashcards } from "./generateFlashcards.js";
 
 const instructions = (courseId, materials) => `
@@ -392,9 +393,14 @@ export async function startCourse(courseId) {
 
   for (const file of courseWithFiles.files) {
     if (!file.metadata || file.metadata.description?.includes("Processing")) {
-      throw new Error(
-        "Please wait for the file to be processed before starting the course",
+      // Kick generation for anything the scanner hasn't covered yet, then
+      // tell the client to retry rather than surfacing a hard failure.
+      ensureMetadataForCourse(courseId);
+      const stillPreparing = new Error(
+        "Still preparing your materials — concepts are being generated from your notes. Try again in a few seconds.",
       );
+      stillPreparing.status = 409;
+      throw stillPreparing;
     }
   }
   const materials = buildMaterials(courseWithFiles);
