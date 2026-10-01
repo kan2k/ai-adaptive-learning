@@ -1,4 +1,5 @@
 import { generateObject } from "ai";
+import { logError } from "../log.js";
 import { z } from "zod";
 import { getModel } from "./providers.js";
 import { getCourseWithFiles, mergeLearningData } from "../db.js";
@@ -152,10 +153,7 @@ Return the response in the specified JSON format with the new knowledge graph no
       return result.object;
     } catch (aiError) {
       retryCount++;
-      console.error(
-        `AI analysis attempt ${retryCount} failed for chunk ${chunkIndex}:`,
-        aiError,
-      );
+      logError("llm", aiError, { where: `AI analysis attempt ${retryCount} failed for chunk ${chunkIndex}:` });
 
       if (retryCount >= maxRetries) {
         throw new Error(
@@ -261,10 +259,7 @@ export async function generateKnowledgeGraph(courseId) {
           ]);
         }
       } catch (chunkError) {
-        console.error(
-          `Error processing chunk ${chunkIndex} for course ${courseId}:`,
-          chunkError,
-        );
+        logError("llm", chunkError, { where: `Error processing chunk ${chunkIndex} for course ${courseId}:` });
         continue;
       }
     }
@@ -288,7 +283,7 @@ export async function generateKnowledgeGraph(courseId) {
     mergeLearningData(courseId, { knowledgeGraph });
     return { success: true, knowledgeGraph };
   } catch (error) {
-    console.error("Error generating knowledge graph:", error);
+    logError("llm", error, { where: "Error generating knowledge graph:" });
     return {
       success: false,
       error: `Failed to generate knowledge graph: ${error.message}`,

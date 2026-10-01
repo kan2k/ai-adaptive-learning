@@ -1,4 +1,5 @@
 import { streamText, generateObject } from "ai";
+import { logError } from "../log.js";
 import { z } from "zod";
 import { getModel } from "./providers.js";
 import {
@@ -170,7 +171,7 @@ Generate a title that would help users quickly identify what this conversation i
 
     updateThread(threadId, { title: result.object.title });
   } catch (error) {
-    console.error("Error generating conversation title:", error);
+    logError("llm", error, { where: "Error generating conversation title:" });
     updateThread(threadId, { title: "New Chat" });
   }
 }

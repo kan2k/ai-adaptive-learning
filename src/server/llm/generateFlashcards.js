@@ -1,4 +1,5 @@
 import { generateObject } from "ai";
+import { logError } from "../log.js";
 import { z } from "zod";
 import { getModel } from "./providers.js";
 import { getCourseWithFiles, getPreferences } from "../db.js";
@@ -159,10 +160,7 @@ Return the response in the specified JSON format with the generated memory text 
       return result.object;
     } catch (aiError) {
       retryCount++;
-      console.error(
-        `Flashcard generation attempt ${retryCount} failed for chunk ${chunkIndex}:`,
-        aiError,
-      );
+      logError("llm", aiError, { where: `Flashcard generation attempt ${retryCount} failed for chunk ${chunkIndex}:` });
 
       if (retryCount >= maxRetries) {
         throw new Error(
@@ -296,10 +294,7 @@ Return the response in the specified JSON format with the generated memory text 
           courseWithFiles.name || "Course",
           userPreferences,
         ).catch((chunkError) => {
-          console.error(
-            `Error processing chunk ${chunkIndex} for course ${courseId}:`,
-            chunkError,
-          );
+          logError("llm", chunkError, { where: `Error processing chunk ${chunkIndex} for course ${courseId}:` });
           return null;
         });
       });
@@ -332,7 +327,7 @@ Return the response in the specified JSON format with the generated memory text 
       flashcardsGenerated: mergedFlashcards.length,
     };
   } catch (error) {
-    console.error("Error generating flashcards:", error);
+    logError("llm", error, { where: "Error generating flashcards:" });
     return {
       success: false,
       error: `Failed to generate flashcards: ${error.message}`,

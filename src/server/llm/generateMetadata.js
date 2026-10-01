@@ -1,4 +1,5 @@
 import { generateObject } from "ai";
+import { logError } from "../log.js";
 import { z } from "zod";
 import { getModel, hasLLM, MissingApiKeyError } from "./providers.js";
 import { getFileById, saveFileMetadata, getCourseFiles } from "../db.js";
@@ -185,10 +186,7 @@ Return the response in the specified JSON format.`;
     } catch (aiError) {
       if (aiError.name === "MissingApiKeyError") throw aiError;
       retryCount++;
-      console.error(
-        `AI analysis attempt ${retryCount} failed for chunk ${chunkIndex} of file ${fileId}:`,
-        aiError,
-      );
+      logError("llm", aiError, { where: `AI analysis attempt ${retryCount} failed for chunk ${chunkIndex} of file ${fileId}:` });
 
       if (retryCount >= maxRetries) {
         throw new Error(
@@ -260,10 +258,7 @@ export async function generateMetadataFromText(fileId) {
           chunkIndex,
           chunks.length,
         ).catch((chunkError) => {
-          console.error(
-            `Error processing chunk ${chunkIndex} for file ${fileId}:`,
-            chunkError,
-          );
+          logError("llm", chunkError, { where: `Error processing chunk ${chunkIndex} for file ${fileId}:` });
           return null;
         });
       });
@@ -291,7 +286,7 @@ export async function generateMetadataFromText(fileId) {
       status: "success",
     });
   } catch (error) {
-    console.error(`Error generating metadata for file ${fileId}:`, error);
+    logError("llm", error, { where: `Error generating metadata for file ${fileId}:` });
 
     let errorDescription = "Failed to process text content";
     if (error.name === "MissingApiKeyError") {
@@ -334,7 +329,7 @@ export function ensureMetadataForCourse(courseId) {
     inFlight.add(file._id);
     generateMetadataFromText(file._id)
       .catch((error) =>
-        console.error(`Metadata generation failed for file ${file._id}:`, error),
+        logError("llm", error, { where: `Metadata generation failed for file ${file._id}:` }),
       )
       .finally(() => inFlight.delete(file._id));
   }

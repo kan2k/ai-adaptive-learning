@@ -1,4 +1,5 @@
 import { generateText, tool } from "ai";
+import { logError } from "../log.js";
 import { z } from "zod";
 import { getModel } from "./providers.js";
 import {
@@ -411,12 +412,12 @@ export async function startCourse(courseId) {
   // original scheduler.runAfter calls
   setTimeout(() => {
     generateKnowledgeGraph(courseId).catch((error) =>
-      console.error("Knowledge graph generation failed:", error),
+      logError("llm", error, { where: "Knowledge graph generation failed:" }),
     );
   }, 1000);
   setTimeout(() => {
     generateFlashcards(courseId).catch((error) =>
-      console.error("Flashcard generation failed:", error),
+      logError("llm", error, { where: "Flashcard generation failed:" }),
     );
   }, 2000);
 

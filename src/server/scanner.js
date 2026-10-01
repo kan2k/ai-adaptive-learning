@@ -1,4 +1,5 @@
 import fs from "fs";
+import { logError } from "./log.js";
 import path from "path";
 import {
   getDb,
@@ -123,7 +124,7 @@ async function indexFile(filePath) {
   try {
     text = await extractText(filePath);
   } catch (error) {
-    console.error(`[scanner] Failed to extract text from ${filePath}:`, error);
+    logError("llm", error, { where: `[scanner] Failed to extract text from ${filePath}:` });
   }
 
   const ext = path.extname(filePath).toLowerCase();
@@ -195,7 +196,7 @@ function scheduleRescan() {
   if (rescanTimer) clearTimeout(rescanTimer);
   rescanTimer = setTimeout(() => {
     rescanTimer = null;
-    scan().catch((error) => console.error("[scanner] rescan failed:", error));
+    scan().catch((error) => logError("llm", error, { where: "[scanner] rescan failed:" }));
   }, 750);
 }
 
@@ -224,7 +225,7 @@ export function ensureScanner() {
       await startWatcher();
       console.log(`[scanner] watching ${STUDY_DIR}`);
     })().catch((error) => {
-      console.error("[scanner] failed to start:", error);
+      logError("llm", error, { where: "[scanner] failed to start:" });
       globalThis.__studyScanner = null;
       throw error;
     });
