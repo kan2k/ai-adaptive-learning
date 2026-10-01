@@ -69,9 +69,40 @@ function waitForReady(url, timeoutMs = 20000) {
 
 let serverProc = null;
 
+// electron-builder strips directories literally named node_modules from
+// extraResources, so the server's dependencies ship as "nmodules" and are
+// renamed back on first launch — ESM imports ignore NODE_PATH, so only a
+// real node_modules directory resolves for them.
+function restoreNodeModules() {
+  const base = path.dirname(serverPath);
+  const shipped = path.join(base, "nmodules");
+  const target = path.join(base, "node_modules");
+  if (!fs.existsSync(target) && fs.existsSync(shipped)) {
+    fs.renameSync(shipped, target);
+  }
+}
+
 app.whenReady().then(async () => {
   try {
     const firstRun = ensureNotesDir();
+
+    // Window appears immediately — dead seconds with no window read as a
+    // broken app. Splash swaps to the real UI once the server answers.
+    const win = new BrowserWindow({
+      width: 1440,
+      height: 920,
+      title: "StudyNotes",
+      backgroundColor: "#facc15",
+      autoHideMenuBar: true,
+    });
+    win.loadURL(
+      "data:text/html;charset=utf-8," +
+        encodeURIComponent(
+          `<body style="margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:repeating-linear-gradient(45deg,#facc15,#facc15 24px,#fbbf24 24px,#fbbf24 48px);font-family:system-ui"><div style="font-size:64px">&#128218;</div><div style="font-size:22px;font-weight:700;color:#422006">Warming up your study space&hellip;</div></body>`,
+        ),
+    );
+
+    restoreNodeModules();
     const port = await freePort(3741);
 
     // ELECTRON_RUN_AS_NODE runs this same binary as plain Node, so the
@@ -82,7 +113,6 @@ app.whenReady().then(async () => {
         ...process.env,
         ...savedLLMEnv(),
         ELECTRON_RUN_AS_NODE: "1",
-        NODE_PATH: path.join(path.dirname(serverPath), "nmodules"),
         STUDY_DIR: notesDir,
         PORT: String(port),
         HOSTNAME: "127.0.0.1",
@@ -93,14 +123,6 @@ app.whenReady().then(async () => {
 
     const url = `http://127.0.0.1:${port}`;
     await waitForReady(url);
-
-    const win = new BrowserWindow({
-      width: 1440,
-      height: 920,
-      title: "Study",
-      backgroundColor: "#facc15",
-      autoHideMenuBar: true,
-    });
     win.loadURL(url);
     // External links (OpenRouter signup etc.) go to the real browser.
     win.webContents.setWindowOpenHandler(({ url: ext }) => {

@@ -96,6 +96,7 @@
       "oneClick": true,
       "createDesktopShortcut": true,
       "runAfterFinish": true
-    }
+    },
+    "artifactName": "${productName}-Setup-${version}.${ext}"
   }
 }
