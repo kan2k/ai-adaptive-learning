@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "build:standalone": "next build && node scripts/pack-standalone.mjs",
+    "prepack": "npm run build:standalone"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.23",
@@ -48,5 +50,15 @@
     "eslint-config-next": "15.4.2",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.5"
-  }
+  },
+  "type": "module",
+  "bin": {
+    "ai-adaptive-learning": "bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "standalone",
+    "README.md",
+    "docs/media"
+  ]
 }
