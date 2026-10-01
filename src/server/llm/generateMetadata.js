@@ -175,7 +175,7 @@ ${chunkText}
 Return the response in the specified JSON format.`;
 
       const result = await generateObject({
-        model: getModel({ temperature: 0.1 }),
+        model: getModel({ tier: "fast", temperature: 0.1 }),
         system: getSystemPrompt(),
         schema: conceptSchema,
         messages: [{ role: "user", content: prompt }],

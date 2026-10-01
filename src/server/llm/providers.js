@@ -1,7 +1,11 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createOpenAI } from "@ai-sdk/openai";
 
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
+// Two tiers through OpenRouter: "fast" for bulk content generation
+// (concepts, flashcards, graph, titles, explanations), "smart" for the live
+// tutor dialogue and chat replies. Ollama runs one model for both tiers.
+const FAST_DEFAULT = "google/gemini-2.5-flash";
+const SMART_DEFAULT = "anthropic/claude-sonnet-5";
 
 export class MissingApiKeyError extends Error {
   constructor() {
@@ -17,10 +21,19 @@ export function hasLLM() {
   return Boolean(process.env.OLLAMA_BASE_URL || process.env.OPENROUTER_API_KEY);
 }
 
+export function modelIdForTier(tier = "fast") {
+  if (process.env.OLLAMA_BASE_URL) {
+    return `ollama:${process.env.OLLAMA_MODEL || "llama3.1"}`;
+  }
+  return tier === "smart"
+    ? process.env.OPENROUTER_MODEL_SMART || SMART_DEFAULT
+    : process.env.OPENROUTER_MODEL_FAST || FAST_DEFAULT;
+}
+
 // Returns a chat model. temperature is passed at call sites via extraBody for
 // OpenRouter parity with the original Convex code; for Ollama it is ignored
 // there and applied by the ai-sdk call options instead.
-export function getModel({ temperature } = {}) {
+export function getModel({ tier = "fast", temperature } = {}) {
   if (process.env.OLLAMA_BASE_URL) {
     const ollama = createOpenAI({
       baseURL: `${process.env.OLLAMA_BASE_URL.replace(/\/$/, "")}/v1`,
@@ -36,7 +49,11 @@ export function getModel({ temperature } = {}) {
   });
   const options =
     temperature !== undefined ? { extraBody: { temperature } } : undefined;
-  return openrouter.chat(process.env.OPENROUTER_MODEL || DEFAULT_MODEL, options);
+  const modelId =
+    tier === "smart"
+      ? process.env.OPENROUTER_MODEL_SMART || SMART_DEFAULT
+      : process.env.OPENROUTER_MODEL_FAST || FAST_DEFAULT;
+  return openrouter.chat(modelId, options);
 }
 
 export function errorResponse(error) {

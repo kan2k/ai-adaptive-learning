@@ -157,7 +157,7 @@ ${chunk.concepts.map((concept, index) => `${index + 1}. ${concept.title}: ${conc
 Return the response in the specified JSON format with the new knowledge graph nodes.`;
 
       const result = await generateObject({
-        model: getModel(),
+        model: getModel({ tier: "fast" }),
         schema: KnowledgeGraphSchema,
         system: chunkSystemPrompt,
         prompt,
@@ -239,7 +239,7 @@ export async function generateKnowledgeGraph(courseId) {
         .join("\n\n");
 
       const { object } = await generateObject({
-        model: getModel(),
+        model: getModel({ tier: "fast" }),
         schema: KnowledgeGraphSchema,
         system: singleShotSystemPrompt,
         prompt: `${materialsContent}`,

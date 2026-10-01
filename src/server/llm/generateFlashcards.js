@@ -150,7 +150,7 @@ ${chunk.concepts.map((concept, index) => `${index + 1}. ${concept.title}: ${conc
 Return the response in the specified JSON format with the generated memory text content.`;
 
       const result = await generateObject({
-        model: getModel(),
+        model: getModel({ tier: "fast" }),
         schema: FlashcardGenerationSchema,
         system: generatePersonalizedSystemPrompt(userPreferences),
         prompt,
@@ -234,7 +234,7 @@ export async function generateFlashcards(courseId) {
         .join("\n\n");
 
       const { object } = await generateObject({
-        model: getModel(),
+        model: getModel({ tier: "fast" }),
         schema: FlashcardGenerationSchema,
         system: generatePersonalizedSystemPrompt(userPreferences),
         prompt: `Please generate bite-sized memory text content for all the learning concepts in this course. The course name is "${courseWithFiles.name || "Course"}".

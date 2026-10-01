@@ -128,7 +128,7 @@ export async function generateStreamingResponse(threadId, courseId) {
 
   try {
     const result = streamText({
-      model: getModel({ temperature: 0.7 }),
+      model: getModel({ tier: "smart", temperature: 0.7 }),
       messages: [
         {
           role: "system",
@@ -159,7 +159,7 @@ export async function generateStreamingResponse(threadId, courseId) {
 export async function generateConversationTitle(threadId, firstMessage) {
   try {
     const result = await generateObject({
-      model: getModel({ temperature: 0.3 }),
+      model: getModel({ tier: "fast", temperature: 0.3 }),
       schema: titleSchema,
       prompt: `Based on this first message in a conversation, generate a concise and descriptive title that captures the main topic or question. Keep it under 50 characters and make it engaging.
 
