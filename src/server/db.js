@@ -470,7 +470,7 @@ const FLASHCARD_SELECT = `
 
 export function listFlashcards(courseId) {
   const rows = getDb()
-    .prepare(`${FLASHCARD_SELECT} WHERE course_id = ? ORDER BY flashcards.created_at ASC, flashcards.id ASC`)
+    .prepare(`${FLASHCARD_SELECT} WHERE flashcards.course_id = ? ORDER BY flashcards.created_at ASC, flashcards.id ASC`)
     .all(Number(courseId));
   return rows.map(rowToFlashcard);
 }
@@ -535,7 +535,7 @@ export function updateFlashcardReview(cardId, next) {
 
 export function getDueFlashcards(courseId, now = Date.now()) {
   const rows = getDb()
-    .prepare(`${FLASHCARD_SELECT} WHERE course_id = ? AND due <= ? ORDER BY due ASC`)
+    .prepare(`${FLASHCARD_SELECT} WHERE flashcards.course_id = ? AND due <= ? ORDER BY due ASC`)
     .all(Number(courseId), now);
   return rows.map(rowToFlashcard);
 }
