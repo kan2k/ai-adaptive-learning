@@ -5,7 +5,7 @@ import { getDb, STUDY_DIR } from "@/server/db";
 import { scan } from "@/server/scanner";
 import { safeName } from "@/server/safe-name";
 
-const ALLOWED = new Set([".md", ".txt", ".pdf"]);
+const ALLOWED = new Set([".md", ".txt", ".pdf", ".docx", ".pptx"]);
 
 export async function POST(request) {
   return handle(async () => {
@@ -18,7 +18,7 @@ export async function POST(request) {
     const uploadName = safeName(file.name);
     const ext = path.extname(uploadName).toLowerCase();
     if (!ALLOWED.has(ext)) {
-      throw httpError("Only .md, .txt, and .pdf files are supported");
+      throw httpError("Only .md, .txt, .pdf, .docx, and .pptx files are supported");
     }
 
     const course = getDb()

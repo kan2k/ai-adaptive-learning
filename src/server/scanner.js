@@ -8,13 +8,17 @@ import {
 } from "./db.js";
 import { ensureMetadataForCourse } from "./llm/generateMetadata.js";
 
-const INDEXABLE = new Set([".md", ".txt", ".pdf"]);
+const INDEXABLE = new Set([".md", ".txt", ".pdf", ".docx", ".pptx"]);
 const ROOT_COURSE_NAME = "Notes";
 
 const MIME = {
   ".md": "text/markdown",
   ".txt": "text/plain",
   ".pdf": "application/pdf",
+  ".docx":
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".pptx":
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 };
 
 async function extractPdfText(filePath) {
@@ -36,9 +40,50 @@ async function extractPdfText(filePath) {
   return fullText.trim();
 }
 
+async function extractDocxText(filePath) {
+  const mammoth = (await import("mammoth")).default;
+  // Markdown conversion keeps headings, which feed structure and citations.
+  const result = await mammoth.convertToMarkdown({ path: filePath });
+  return result.value.trim();
+}
+
+async function extractPptxText(filePath) {
+  const AdmZip = (await import("adm-zip")).default;
+  const zip = new AdmZip(filePath);
+  const slides = zip
+    .getEntries()
+    .filter((e) => /^ppt\/slides\/slide\d+\.xml$/.test(e.entryName))
+    .sort(
+      (a, b) =>
+        parseInt(a.entryName.match(/\d+/)[0]) -
+        parseInt(b.entryName.match(/\d+/)[0]),
+    );
+  const parts = [];
+  for (const slide of slides) {
+    const xml = slide.getData().toString("utf8");
+    // <a:t> holds every visible text run; <a:p> boundaries become lines.
+    const paragraphs = xml
+      .split(/<\/a:p>/)
+      .map((p) =>
+        [...p.matchAll(/<a:t>([^<]*)<\/a:t>/g)]
+          .map((m) => m[1])
+          .join("")
+          .trim(),
+      )
+      .filter(Boolean);
+    if (!paragraphs.length) continue;
+    const n = parseInt(slide.entryName.match(/\d+/)[0]);
+    const title = paragraphs[0].slice(0, 80);
+    parts.push(`# Slide ${n}: ${title}\n\n${paragraphs.join("\n")}`);
+  }
+  return parts.join("\n\n");
+}
+
 async function extractText(filePath) {
   const ext = path.extname(filePath).toLowerCase();
   if (ext === ".pdf") return extractPdfText(filePath);
+  if (ext === ".docx") return extractDocxText(filePath);
+  if (ext === ".pptx") return extractPptxText(filePath);
   return fs.readFileSync(filePath, "utf8");
 }
 

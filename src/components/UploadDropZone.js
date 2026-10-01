@@ -90,6 +90,8 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
     onDrop,
     accept: {
       "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
       "text/markdown": [".md"],
       "text/plain": [".txt"],
     },
@@ -151,7 +153,7 @@ export default function UploadDropZone({ courseId, onUploadComplete }) {
           ) : (
             <div>
               <p className="text-orange-500 font-medium text-base">
-                Drop PDF, Markdown, or text files here...
+                Drop PDF, PowerPoint, Word, Markdown, or text files here...
               </p>
             </div>
           )}
