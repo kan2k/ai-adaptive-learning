@@ -99,6 +99,38 @@
       "createDesktopShortcut": true,
       "runAfterFinish": true
     },
-    "artifactName": "${productName}-Setup-${version}.${ext}"
-  }
+    "artifactName": "${productName}-Setup-${version}.${ext}",
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build-assets/icon.png",
+      "category": "public.app-category.education"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build-assets/icon.png",
+      "category": "Education"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "kan2k",
+      "repo": "ai-adaptive-learning"
+    }
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kan2k/ai-adaptive-learning.git"
+  },
+  "homepage": "https://github.com/kan2k/ai-adaptive-learning",
+  "description": "Point it at a folder of notes. Get a tutor that actually adapts - local-first, BYOK, colorful."
 }
