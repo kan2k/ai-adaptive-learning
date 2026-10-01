@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { DotPattern } from "./magicui/dot-pattern";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
 export const Quiz = ({ courseId, nextQuestionData, answerQuestion, user }) => {
   const [questionStyle, setQuestionStyle] = useState("enhanced"); // 'original' or 'enhanced'
@@ -34,6 +35,56 @@ export const Quiz = ({ courseId, nextQuestionData, answerQuestion, user }) => {
   const [showHint, setShowHint] = useState(false);
   const [isLoadingNextQuestion, setIsLoadingNextQuestion] = useState(false);
   const [displayedMessage, setDisplayedMessage] = useState("");
+  // Explanations cache keyed by question text so revisiting a wrong answer
+  // never re-calls the LLM.
+  const [explanations, setExplanations] = useState({});
+  const [isExplaining, setIsExplaining] = useState(false);
+
+  const answeredWrong =
+    isAnswerSubmitted &&
+    selectedAnswer !== null &&
+    currentQuestion.answers[selectedAnswer] !== currentQuestion.correctAnswer;
+  const explanation = explanations[currentQuestion.question];
+
+  useEffect(() => {
+    if (!answeredWrong || !courseId || !currentQuestion.question) return;
+    if (explanations[currentQuestion.question] !== undefined) return;
+    let cancelled = false;
+    setIsExplaining(true);
+    apiFetch(`/api/courses/${courseId}/explain`, {
+      body: {
+        question: currentQuestion.question,
+        answers: currentQuestion.answers,
+        chosen: currentQuestion.answers[selectedAnswer],
+        correct: currentQuestion.correctAnswer,
+        concept: nextQuestionData?.enhancedQuestion?.conceptCovered || "",
+      },
+    })
+      .then((data) => {
+        if (!cancelled) {
+          setExplanations((prev) => ({
+            ...prev,
+            [currentQuestion.question]: data.explanation,
+          }));
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to fetch explanation:", error);
+        if (!cancelled) {
+          setExplanations((prev) => ({
+            ...prev,
+            [currentQuestion.question]: null,
+          }));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsExplaining(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answeredWrong, courseId, currentQuestion.question]);
 
   // Update local state when nextQuestionData changes (new question available)
   useEffect(() => {
@@ -120,6 +171,7 @@ export const Quiz = ({ courseId, nextQuestionData, answerQuestion, user }) => {
       });
       setDisplayedMessage("");
       setQuestionStyle("enhanced");
+      setExplanations({});
     }
 
     // Update the ref for next time
@@ -255,6 +307,13 @@ export const Quiz = ({ courseId, nextQuestionData, answerQuestion, user }) => {
             </div>
           </div>
           <div className="flex flex-col gap-2">
+            {answeredWrong && (explanation || isExplaining) && (
+              <div className="mb-2 flex justify-center">
+                <div className="bg-white/15 text-white text-sm font-normal rounded-2xl px-4 py-3 max-w-[560px] flex items-center gap-2">
+                  {explanation || <Spinner className="h-4 w-4" />}
+                </div>
+              </div>
+            )}
             {isAnswerSubmitted && (
               <div className="mb-2 flex justify-center">
                 <Button
