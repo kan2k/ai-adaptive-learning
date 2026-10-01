@@ -18,7 +18,13 @@ import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
 import { SourceChip } from "./SourceChip";
 
-export const Quiz = ({ courseId, nextQuestionData, answerQuestion, user }) => {
+export const Quiz = ({
+  courseId,
+  nextQuestionData,
+  answerQuestion,
+  user,
+  onAnswered,
+}) => {
   const [questionStyle, setQuestionStyle] = useState("enhanced"); // 'original' or 'enhanced'
   const previousCourseIdRef = useRef(courseId);
   const [currentQuestion, setCurrentQuestion] = useState({
@@ -211,6 +217,10 @@ export const Quiz = ({ courseId, nextQuestionData, answerQuestion, user }) => {
         answer: answerText,
         courseId: courseId,
       });
+      onAnswered?.(
+        answerText === currentQuestion.correctAnswer,
+        nextQuestionData?.enhancedQuestion?.conceptCovered || "",
+      );
     } catch (error) {
       console.error("Failed to submit answer - Full error:", error);
       setSelectedAnswer(null);

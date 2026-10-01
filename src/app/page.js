@@ -16,6 +16,7 @@ import {
   Layers,
   FileQuestion,
   Container,
+  Timer,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import { Flashcard } from "@/components/Flashcard";
 import Image from "next/image";
 import { Preferences } from "@/components/Preferences";
 import { Quiz } from "@/components/Quiz";
+import { StudySession } from "@/components/StudySession";
 import { KnowledgeGraph } from "@/components/KnowledgeGraph";
 import { Chat } from "@/components/Chat";
 import {
@@ -499,6 +501,19 @@ export default function Page() {
                               )}
                             </div>
                           </TabsTrigger>
+                          <TabsTrigger
+                            className="bg-blue-500 px-4 py-3 flex flex-row items-center justify-between gap-2 cursor-pointer group"
+                            value="session"
+                          >
+                            <div className="flex flex-row gap-2 h-full w-full">
+                              <Timer className="h-full w-auto scale-90 group-hover:scale-100 transition-all duration-300" />
+                              <div className="flex flex-col mt-1">
+                                <div className="flex items-center">
+                                  <p className="font-bold text-base">Session</p>
+                                </div>
+                              </div>
+                            </div>
+                          </TabsTrigger>
                         </div>
                       </TabsList>
                       <div className="flex-1 min-h-0 overflow-hidden">
@@ -522,6 +537,17 @@ export default function Page() {
                           className="h-full overflow-hidden"
                         >
                           <Quiz
+                            courseId={selectedCourse?._id}
+                            nextQuestionData={nextQuestionData}
+                            answerQuestion={answerQuestion}
+                            user={localUser}
+                          />
+                        </TabsContent>
+                        <TabsContent
+                          value="session"
+                          className="h-full overflow-hidden"
+                        >
+                          <StudySession
                             courseId={selectedCourse?._id}
                             nextQuestionData={nextQuestionData}
                             answerQuestion={answerQuestion}
